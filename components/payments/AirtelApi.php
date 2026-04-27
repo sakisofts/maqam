@@ -128,6 +128,7 @@ class AirtelApi extends Component
             'payload_sent' => $payload,
         ];
     }
+    
     public function pay($reference, $msisdn, $amount, $description = 'PAY')
     {
 

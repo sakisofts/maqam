@@ -48,6 +48,25 @@ class ApiController extends Controller
             $deposited = $data['sonda_mpola'];
             $type = $data['type'];
 
+//            {
+//                "data": {
+//                "transaction": {
+//                    "airtel_money_id": "product-partner-**41",
+//            "id": "AB***141",
+//            "reference_id": "18****354",
+//            "status": "TS"
+//        }
+//    },
+//    "status": {
+//                "code": "200",
+//        "message": "Success",
+//        "response_code": "DP00900001001",
+//        "result_code": "ESB000010",
+//        "success": true
+//    }
+//}
+            echo \Safe\json_encode($response);
+
             if ($response['success'] && isset($response['data']['data']['transaction'])) {
                 // Log the transaction
                 $transaction = $response['data']['data']['transaction'];
