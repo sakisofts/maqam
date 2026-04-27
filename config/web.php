@@ -70,7 +70,7 @@ $config = [
         'airtelAuth' => [
             'class' => 'app\components\payments\AirtelAuth',
             'clientId' => Yii::$app->params['clientId'],
-            'clientSecret' => Yii::$app->params['secrete'],
+            'clientSecret' => Yii::$app->params['secret'],
             'env' => 'staging', // or 'production'
         ],
         'transactionService' => [
@@ -81,7 +81,7 @@ $config = [
 //            'baseUrl' => 'https://openapiuat.airtel.africa/', // Change to production when live
             'baseUrl' => 'https://openapiuat.airtel.ug', // Change to production when live
             'clientId' => Yii::$app->params['clientId'],
-            'clientSecret' => Yii::$app->params['secrete'],
+            'clientSecret' => Yii::$app->params['secret'],
             'countryCode' => 'UG',
             'currencyCode' => 'UGX',
             'publicKeyPath' => $pk,
