@@ -71,7 +71,7 @@ $config = [
             'class' => 'app\components\payments\AirtelAuth',
             'clientId' => Yii::$app->params['clientId'],
             'clientSecret' => Yii::$app->params['secrete'],
-            'env' => 'production', // or 'production'
+            'env' => 'staging', // or 'production'
         ],
         'transactionService' => [
             'class' => 'app\components\payments\TransactionService',
