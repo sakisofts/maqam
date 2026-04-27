@@ -1,21 +1,26 @@
 <?php
 
 namespace app\controllers;
+use app\models\BookingPayments;
 use app\models\Bookings;
 use app\models\PasswordChangeForm;
+use app\models\SondaMpolaPayments;
+use app\models\SondaMpolas;
+use app\models\Transaction;
 use app\models\TwoFactorAuthForm;
 use app\models\User;
 use app\models\UserProfile;
 use app\models\UserSearch;
 use Yii;
 use yii\filters\AccessControl;
+use yii\rest\Controller;
 use yii\web\Response;
 use yii\filters\VerbFilter;
 use app\models\LoginForm;
 use app\models\ContactForm;
 use yii\web\UploadedFile;
 
-class SiteController extends BaseController
+class SiteController extends Controller
 {
     /**
      * {@inheritdoc}
@@ -41,13 +46,84 @@ class SiteController extends BaseController
     /**
      * Displays homepage.
      *
-     * @return string
+     * @return Response
      */
     public function actionIndex()
     {
-        $res = (new Bookings())->bookings();
+//        $res = (new Bookings())->bookings();
 
-        return $this->render('index', $res);
+        $request = Yii::$app->request;
+        if (!$request->isPost) {
+            return [
+                'status' => 'error',
+                'message' => 'Method not allowed'
+            ];
+        }else{
+            $payload = $request->getRawBody();
+            $data = json_decode($payload, true);
+
+
+            if (
+                isset($data['transaction'])
+            ) {
+                $transactionId = $data['transaction']['id'] ?? null;
+
+                if ($transactionId === null) {
+                    return $this->asJson(['message' => 'Missing transaction ID.']);
+                }
+
+                $payment = Transaction::findOne(['transaction_id' => $transactionId]);
+                $booking = BookingPayments::findOne(['transaction_id' => $transactionId]);
+                $sd = SondaMpolaPayments::findOne(['transaction_id' => $transactionId]);
+
+//            trigger notifications
+                if ($payment && $payment->status !== 'completed') {
+                    $payment->status = 'completed';
+                    $payment->payment_status = 'Settled';
+                    $payment->callback_data = json_encode($data);
+                    $payment->save(false);
+                }
+
+                if ($booking && $booking->payment_status !== 'completed') {
+                    $booking->payment_status = 'completed';
+                    $booking->save(false);
+                }
+
+                if ($sd && $sd->payment_status !== 'completed') {
+                    $sd->payment_status = 'completed';
+                    $sd->save(false);
+
+                    $bk = SondaMpolas::findOne(['id' => $sd->sondaMpolaId]);
+                    if ($bk) {
+                        $bk->balance += $sd->amount;
+                        $bk->save(false);
+                    }
+                }
+
+                return $this->asJson(['message' => 'Transaction processed successfully.']);
+            }else{
+                $t = new Transaction();
+                $t->callback_data = json_encode($data);
+                $t->transaction_id = uniqid('test_');
+                $t->reference = 'testing';
+                $t->phone = '0756913885';
+                $t->amount = 5000;
+                $t->currency = 'UGX';
+                $t->description = 'Test capturing';
+                $t->type = 'Just testing';
+                $t->status = 'Success.';
+                $t->payment_status = 'pending';
+                $t->message = 'method used '.$request->method;
+                $t->save(false);
+            }
+
+            // Fallback
+            return $this->asJson(['message' => 'Transaction failed or invalid.'], 400);
+
+        }
+
+
+        return $this->asJson(['connected'=>"running"]);
     }
 
     public function actionUserDetails($id){
