@@ -7,10 +7,10 @@ return [
     'bsVersion' => '5.x',
     'airtelMoney' => [
         'class' => 'app\components\payments\AirtelMoneyService',
-        'baseUrl' => 'https://openapi.airtel.africa/',
+        'baseUrl' => 'https://openapiuat.airtel.ug',
 //        'baseUrl' => 'https://openapi.airtel.africa/',
-        'clientId' => 'a2452e7c-a71c-415a-a10f-38738c7da83e',
-        'clientSecret' => '794e208e-69fd-4c55-b528-bbb5fd84c744',
+        'clientId' => '987c2bd9-a8a5-4027-9188-e7d4aa5dcd2e',
+        'clientSecret' => '8ad6dba0-1ca2-49aa-8fcc-0e24a0238dad',
         'countryCode' => 'UG',
         'currencyCode' => 'Ugx',
         'pin' => '',
