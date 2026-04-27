@@ -1,0 +1,284 @@
+<?php
+
+namespace app\widgets;
+use app\assets\ReceiptAsset;
+use yii\base\Widget;
+use yii\helpers\Html;
+
+/**
+ * Receipt widget for Yii2
+ *
+ * A reusable component that outputs a receipt in a standardized format
+ * compatible with various paper sizes including 80mm thermal receipt printers.
+ *
+ * Usage:
+ * <?= Receipt::widget([
+ *     'logo' => '/path/to/logo.png',
+ *     'companyName' => 'Maqam Travels',
+ *     'brandName' => 'SONDA MPOLA',
+ *     'tagline' => 'Travel with Confidence',
+ *     'brandTagline' => 'Save for a Sacred journey',
+ *     'address' => [
+ *         'floor' => '1st floor, AAA Complex',
+ *         'road' => 'Bukoto Kisasi Road',
+ *         'poBox' => 'P.O. Box 101776, Kampala, Uganda',
+ *         'phone' => '+256709741486',
+ *         'email' => 'info@maqamtravels.com',
+ *     ],
+ *     'receiptTitle' => 'SONDA MPOLA RECEIPT',
+ *     'receiptData' => [
+ *         ['label' => 'Received from', 'value' => 'John Doe'],
+ *         ['label' => 'Date', 'value' => '26/04/2025'],
+ *         // Add other fields as needed
+ *     ],
+ *     'paperSize' => '80mm', // Options: '80mm', 'A4', 'Letter', etc.
+ * ]) ?>
+ */
+class Receipt extends Widget
+{
+    /**
+     * @var string Path to company logo
+     */
+    public $logo;
+
+    /**
+     * @var string Company name
+     */
+    public $companyName;
+
+    /**
+     * @var string Brand name (e.g., SONDA MPOLA)
+     */
+    public $brandName;
+
+    /**
+     * @var string Company tagline
+     */
+    public $tagline;
+
+    /**
+     * @var string Brand tagline
+     */
+    public $brandTagline;
+
+    /**
+     * @var array Company address information
+     */
+    public $address = [];
+
+    /**
+     * @var string Receipt title
+     */
+    public $receiptTitle = 'RECEIPT';
+
+    /**
+     * @var array Receipt data in the format [['label' => 'Label Name', 'value' => 'Value']]
+     */
+    public $receiptData = [];
+
+    /**
+     * @var string Paper size (80mm, A4, Letter, etc.)
+     */
+    public $paperSize = 'A4';
+
+    /**
+     * @var string Optional receipt number or identifier
+     */
+    public $receiptNumber;
+
+    /**
+     * @var bool Whether to show print button
+     */
+    public $showPrintButton = true;
+
+    /**
+     * {@inheritdoc}
+     */
+    public function init()
+    {
+        parent::init();
+        $this->registerAssets();
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function run()
+    {
+        $content = $this->renderHeader();
+        $content .= $this->renderAddress();
+        $content .= $this->renderTitle();
+        $content .= $this->renderData();
+        $content .= $this->renderFooter();
+
+        $options = [
+            'id' => $this->id,
+            'class' => 'receipt-container ' . $this->getPaperSizeClass(),
+        ];
+
+        $html = Html::tag('div', $content, $options);
+
+        if ($this->showPrintButton) {
+            $html .= Html::button('Print Receipt', [
+                'class' => 'btn btn-primary print-button',
+                'onclick' => "printReceipt('{$this->id}')"
+            ]);
+        }
+
+        return $html;
+    }
+
+    /**
+     * Render receipt header with logos
+     * @return string
+     */
+    protected function renderHeader()
+    {
+        $companyLogo = '';
+        $brandLogo = '';
+
+        if ($this->logo) {
+            $companyLogo = Html::img($this->logo, [
+                'alt' => $this->companyName,
+                'class' => 'company-logo'
+            ]);
+        }
+//
+//        $companyInfo = Html::tag('div',
+//            Html::tag('div', $this->companyName, ['class' => 'company-name']) .
+//            Html::tag('div', $this->tagline, ['class' => 'tagline']),
+//            ['class' => 'company-info']
+//        );
+//
+//        $brandInfo = Html::tag('div',
+//            Html::tag('div', $this->brandName, ['class' => 'brand-name']) .
+//            Html::tag('div', $this->brandTagline, ['class' => 'brand-tagline']),
+//            ['class' => 'brand-info']
+//        );
+//        . $brandInfo . $companyInfo   Html::tag('div', $brandLogo , ['class' => 'brand-container bg-black'])
+        return Html::tag('div',
+            Html::tag('div', $companyLogo , ['class' => 'logo-container']),
+            ['class' => 'receipt-header']
+        );
+    }
+
+    /**
+     * Render company address
+     * @return string
+     */
+    protected function renderAddress()
+    {
+        $addressHtml = '';
+
+        if (!empty($this->address)) {
+            $addressLines = [];
+
+            if (!empty($this->address['floor'])) {
+                $addressLines[] = $this->address['floor'];
+            }
+
+            if (!empty($this->address['road'])) {
+                $addressLines[] = $this->address['road'];
+            }
+
+            if (!empty($this->address['poBox'])) {
+                $addressLines[] = $this->address['poBox'];
+            }
+
+            if (!empty($this->address['phone'])) {
+                $addressLines[] = 'Call / Whatsapp: ' . $this->address['phone'];
+            }
+
+            if (!empty($this->address['email'])) {
+                $addressLines[] = 'Email: ' . $this->address['email'];
+            }
+
+            foreach ($addressLines as $line) {
+                $addressHtml .= Html::tag('div', $line, ['class' => 'address-line']);
+            }
+        }
+
+        return Html::tag('div', $addressHtml, ['class' => 'address-container']);
+    }
+
+    /**
+     * Render receipt title
+     * @return string
+     */
+    protected function renderTitle()
+    {
+        return Html::tag('div', $this->receiptTitle, ['class' => 'receipt-title']);
+    }
+
+    /**
+     * Render tabulated receipt data
+     * @return string
+     */
+    protected function renderData()
+    {
+        $rows = '';
+
+        foreach ($this->receiptData as $row) {
+            $label = isset($row['label']) ? $row['label'] : '';
+            $value = isset($row['value']) ? $row['value'] : '';
+
+            $labelCell = Html::tag('td', $label, ['class' => 'data-label']);
+            $valueCell = Html::tag('td', $value, ['class' => 'data-value']);
+
+            $rows .= Html::tag('tr', $labelCell . $valueCell);
+        }
+
+        return Html::tag('table', $rows, ['class' => 'receipt-data']);
+    }
+
+    /**
+     * Render receipt footer
+     * @return string
+     */
+    protected function renderFooter()
+    {
+        $date = date('Y-m-d H:i:s');
+        $footnote = "Printed on: {$date}";
+
+        return Html::tag('div', $footnote, ['class' => 'receipt-footer']);
+    }
+
+    /**
+     * Get CSS class for paper size
+     * @return string
+     */
+    protected function getPaperSizeClass()
+    {
+        $sizeMap = [
+            '80mm' => 'paper-80mm',
+            'A4' => 'paper-a4',
+            'Letter' => 'paper-letter',
+            // Add more paper sizes as needed
+        ];
+
+        return isset($sizeMap[$this->paperSize]) ? $sizeMap[$this->paperSize] : 'paper-a4';
+    }
+
+    /**
+     * Register required assets
+     */
+    protected function registerAssets()
+    {
+        $view = $this->getView();
+        ReceiptAsset::register($view);
+
+        $js = <<<JS
+        function printReceipt(id) {
+            var printContents = document.getElementById(id).innerHTML;
+            var originalContents = document.body.innerHTML;
+            
+            document.body.innerHTML = '<div class="receipt-print-container " id="receiptId">' + printContents + '</div>';
+            
+            window.print();
+            
+            document.body.innerHTML = originalContents;
+        }
+        JS;
+        $view->registerJs($js);
+    }
+}

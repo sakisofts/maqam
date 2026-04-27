@@ -1,0 +1,1723 @@
+/**
+ * Yii2 Implementation for Hajj/Umrah Reservation and Payment System
+ *
+ * This implementation includes the necessary models, controllers, and views
+ * for handling reservations and payments in a Yii2 application.
+ */
+
+/**
+ * MODELS
+ */
+
+// models/Reservation.php
+<?php
+
+namespace app\models;
+
+use Yii;
+use yii\behaviors\TimestampBehavior;
+use yii\db\Expression;
+
+/**
+ * This is the model class for table "reservation".
+ *
+ * @property int $id
+ * @property string $reservation_number
+ * @property int $user_id
+ * @property int $package_id
+ * @property string $reservation_date
+ * @property int $number_of_pilgrims
+ * @property string $status
+ * @property float $total_amount
+ * @property float $amount_paid
+ * @property float $balance_due
+ * @property string $payment_deadline
+ * @property string|null $special_requests
+ * @property int $created_at
+ * @property int $updated_at
+ *
+ * @property Package $package
+ * @property Payment[] $payments
+ * @property PaymentPlan $paymentPlan
+ * @property ReservationPilgrim[] $reservationPilgrims
+ * @property User $user
+ */
+class Reservation extends \yii\db\ActiveRecord
+{
+    const STATUS_PENDING = 'Pending';
+    const STATUS_CONFIRMED = 'Confirmed';
+    const STATUS_CANCELLED = 'Cancelled';
+    const STATUS_COMPLETED = 'Completed';
+
+    /**
+     * {@inheritdoc}
+     */
+    public static function tableName()
+    {
+        return 'reservation';
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function behaviors()
+    {
+        return [
+            TimestampBehavior::class,
+        ];
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function rules()
+    {
+        return [
+            [['user_id', 'package_id', 'reservation_date', 'number_of_pilgrims', 'total_amount', 'balance_due', 'payment_deadline'], 'required'],
+            [['user_id', 'package_id', 'number_of_pilgrims'], 'integer'],
+            [['reservation_date', 'payment_deadline'], 'safe'],
+            [['total_amount', 'amount_paid', 'balance_due'], 'number'],
+            [['special_requests'], 'string'],
+            [['status'], 'string'],
+            [['status'], 'in', 'range' => [self::STATUS_PENDING, self::STATUS_CONFIRMED, self::STATUS_CANCELLED, self::STATUS_COMPLETED]],
+            [['reservation_number'], 'string', 'max' => 50],
+            [['reservation_number'], 'unique'],
+            [['user_id'], 'exist', 'skipOnError' => true, 'targetClass' => User::class, 'targetAttribute' => ['user_id' => 'id']],
+            [['package_id'], 'exist', 'skipOnError' => true, 'targetClass' => Package::class, 'targetAttribute' => ['package_id' => 'id']],
+        ];
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function attributeLabels()
+    {
+        return [
+            'id' => 'ID',
+            'reservation_number' => 'Reservation Number',
+            'user_id' => 'User',
+            'package_id' => 'Package',
+            'reservation_date' => 'Reservation Date',
+            'number_of_pilgrims' => 'Number Of Pilgrims',
+            'status' => 'Status',
+            'total_amount' => 'Total Amount',
+            'amount_paid' => 'Amount Paid',
+            'balance_due' => 'Balance Due',
+            'payment_deadline' => 'Payment Deadline',
+            'special_requests' => 'Special Requests',
+            'created_at' => 'Created At',
+            'updated_at' => 'Updated At',
+        ];
+    }
+
+    /**
+     * Gets query for [[Package]].
+     */
+    public function getPackage()
+    {
+        return $this->hasOne(Package::class, ['id' => 'package_id']);
+    }
+
+    /**
+     * Gets query for [[Payments]].
+     */
+    public function getPayments()
+    {
+        return $this->hasMany(Payment::class, ['reservation_id' => 'id']);
+    }
+
+    /**
+     * Gets query for [[PaymentPlan]].
+     */
+    public function getPaymentPlan()
+    {
+        return $this->hasOne(PaymentPlan::class, ['reservation_id' => 'id']);
+    }
+
+    /**
+     * Gets query for [[ReservationPilgrims]].
+     */
+    public function getReservationPilgrims()
+    {
+        return $this->hasMany(ReservationPilgrim::class, ['reservation_id' => 'id']);
+    }
+
+    /**
+     * Gets query for [[User]].
+     */
+    public function getUser()
+    {
+        return $this->hasOne(User::class, ['id' => 'user_id']);
+    }
+
+    /**
+     * Gets pilgrims associated with this reservation.
+     */
+    public function getPilgrims()
+    {
+        return $this->hasMany(Pilgrim::class, ['id' => 'pilgrim_id'])
+            ->via('reservationPilgrims');
+    }
+
+    /**
+     * Check if a payment plan exists, create if not
+     */
+    public function ensurePaymentPlan($installments = 1)
+    {
+        if (!$this->paymentPlan) {
+            $plan = new PaymentPlan();
+            $plan->reservation_id = $this->id;
+            $plan->total_installments = $installments;
+            if ($plan->save()) {
+                return $plan->createInstallments();
+            }
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * Generate a unique reservation number
+     */
+    public function generateReservationNumber()
+    {
+        $prefix = 'RSRV';
+        $year = date('Y');
+        $random = strtoupper(Yii::$app->security->generateRandomString(4));
+        $this->reservation_number = "{$prefix}-{$year}-{$random}";
+        return $this->reservation_number;
+    }
+
+    /**
+     * Add a payment to this reservation
+     */
+    public function addPayment($amount, $method, $type = Payment::TYPE_INSTALLMENT, $transactionId = null)
+    {
+        if ($amount <= 0 || $amount > $this->balance_due) {
+            return false;
+        }
+
+        $payment = new Payment();
+        $payment->reservation_id = $this->id;
+        $payment->amount = $amount;
+        $payment->payment_date = date('Y-m-d H:i:s');
+        $payment->payment_method = $method;
+        $payment->payment_type = $type;
+        $payment->transaction_id = $transactionId;
+        $payment->payment_status = Payment::STATUS_COMPLETED;
+        $payment->generatePaymentNumber();
+
+        if ($payment->save()) {
+            // Update amount paid and balance due
+            $this->amount_paid += $amount;
+            $this->balance_due -= $amount;
+
+            // Update reservation status if fully paid
+            if ($this->balance_due <= 0) {
+                $this->status = self::STATUS_CONFIRMED;
+            }
+
+            return $this->save() ? $payment : false;
+        }
+
+        return false;
+    }
+
+    /**
+     * Calculate remaining slots for the package
+     */
+    public function calculateRemainingSlots()
+    {
+        $package = $this->package;
+        if ($package) {
+            $package->available_slots -= $this->number_of_pilgrims;
+            return $package->save();
+        }
+        return false;
+    }
+
+    /**
+     * Before save operations
+     */
+    public function beforeSave($insert)
+    {
+        if (parent::beforeSave($insert)) {
+            if ($insert) {
+                $this->generateReservationNumber();
+                $this->status = self::STATUS_PENDING;
+                $this->reservation_date = date('Y-m-d H:i:s');
+                $this->amount_paid = 0;
+                $this->balance_due = $this->total_amount;
+            }
+            return true;
+        }
+        return false;
+    }
+}
+
+// models/Payment.php
+<?php
+
+namespace app\models;
+
+use Yii;
+use yii\behaviors\TimestampBehavior;
+
+/**
+ * This is the model class for table "payment".
+ *
+ * @property int $id
+ * @property string $payment_number
+ * @property int $reservation_id
+ * @property float $amount
+ * @property string $payment_date
+ * @property string $payment_method
+ * @property string|null $transaction_id
+ * @property string $payment_status
+ * @property string $payment_type
+ * @property string|null $notes
+ * @property string|null $receipt_number
+ * @property int $created_at
+ * @property int $updated_at
+ *
+ * @property PaymentPlanInstallment[] $paymentPlanInstallments
+ * @property Reservation $reservation
+ */
+class Payment extends \yii\db\ActiveRecord
+{
+    const STATUS_PENDING = 'Pending';
+    const STATUS_COMPLETED = 'Completed';
+    const STATUS_FAILED = 'Failed';
+    const STATUS_REFUNDED = 'Refunded';
+
+    const METHOD_CASH = 'Cash';
+    const METHOD_CREDIT_CARD = 'Credit Card';
+    const METHOD_BANK_TRANSFER = 'Bank Transfer';
+    const METHOD_PAYPAL = 'PayPal';
+    const METHOD_OTHER = 'Other';
+
+    const TYPE_DEPOSIT = 'Deposit';
+    const TYPE_INSTALLMENT = 'Installment';
+    const TYPE_FULL_PAYMENT = 'Full Payment';
+    const TYPE_ADDITIONAL_SERVICE = 'Additional Service';
+
+    /**
+     * {@inheritdoc}
+     */
+    public static function tableName()
+    {
+        return 'payment';
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function behaviors()
+    {
+        return [
+            TimestampBehavior::class,
+        ];
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function rules()
+    {
+        return [
+            [['reservation_id', 'amount', 'payment_date', 'payment_method', 'payment_type'], 'required'],
+            [['reservation_id'], 'integer'],
+            [['amount'], 'number'],
+            [['payment_date'], 'safe'],
+            [['payment_method'], 'string'],
+            [['payment_method'], 'in', 'range' => [
+                self::METHOD_CASH, self::METHOD_CREDIT_CARD,
+                self::METHOD_BANK_TRANSFER, self::METHOD_PAYPAL, self::METHOD_OTHER
+            ]],
+            [['payment_status'], 'string'],
+            [['payment_status'], 'in', 'range' => [
+                self::STATUS_PENDING, self::STATUS_COMPLETED,
+                self::STATUS_FAILED, self::STATUS_REFUNDED
+            ]],
+            [['payment_type'], 'string'],
+            [['payment_type'], 'in', 'range' => [
+                self::TYPE_DEPOSIT, self::TYPE_INSTALLMENT,
+                self::TYPE_FULL_PAYMENT, self::TYPE_ADDITIONAL_SERVICE
+            ]],
+            [['notes'], 'string'],
+            [['payment_number', 'transaction_id', 'receipt_number'], 'string', 'max' => 255],
+            [['payment_number'], 'unique'],
+            [['reservation_id'], 'exist', 'skipOnError' => true, 'targetClass' => Reservation::class, 'targetAttribute' => ['reservation_id' => 'id']],
+        ];
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function attributeLabels()
+    {
+        return [
+            'id' => 'ID',
+            'payment_number' => 'Payment Number',
+            'reservation_id' => 'Reservation ID',
+            'amount' => 'Amount',
+            'payment_date' => 'Payment Date',
+            'payment_method' => 'Payment Method',
+            'transaction_id' => 'Transaction ID',
+            'payment_status' => 'Payment Status',
+            'payment_type' => 'Payment Type',
+            'notes' => 'Notes',
+            'receipt_number' => 'Receipt Number',
+            'created_at' => 'Created At',
+            'updated_at' => 'Updated At',
+        ];
+    }
+
+    /**
+     * Gets query for [[PaymentPlanInstallments]].
+     */
+    public function getPaymentPlanInstallments()
+    {
+        return $this->hasMany(PaymentPlanInstallment::class, ['payment_id' => 'id']);
+    }
+
+    /**
+     * Gets query for [[Reservation]].
+     */
+    public function getReservation()
+    {
+        return $this->hasOne(Reservation::class, ['id' => 'reservation_id']);
+    }
+
+    /**
+     * Generate a unique payment number
+     */
+    public function generatePaymentNumber()
+    {
+        $prefix = 'PAY';
+        $year = date('Y');
+        $random = strtoupper(Yii::$app->security->generateRandomString(4));
+        $this->payment_number = "{$prefix}-{$year}-{$random}";
+        return $this->payment_number;
+    }
+
+    /**
+     * Generate receipt number after successful payment
+     */
+    public function generateReceiptNumber()
+    {
+        if ($this->payment_status === self::STATUS_COMPLETED && empty($this->receipt_number)) {
+            $prefix = 'RCPT';
+            $year = date('Y');
+            $random = strtoupper(Yii::$app->security->generateRandomString(4));
+            $this->receipt_number = "{$prefix}-{$year}-{$random}";
+            return $this->save();
+        }
+        return false;
+    }
+
+    /**
+     * Update related installment if this payment is for an installment
+     */
+    public function updateInstallment()
+    {
+        if ($this->payment_type === self::TYPE_INSTALLMENT &&
+            $this->payment_status === self::STATUS_COMPLETED) {
+
+            // Find the earliest unpaid installment
+            $installment = PaymentPlanInstallment::find()
+                ->where(['payment_plan_id' => $this->reservation->paymentPlan->id])
+                ->andWhere(['status' => PaymentPlanInstallment::STATUS_PENDING])
+                ->orderBy(['due_date' => SORT_ASC])
+                ->one();
+
+            if ($installment) {
+                $installment->payment_id = $this->id;
+                $installment->status = PaymentPlanInstallment::STATUS_PAID;
+                return $installment->save();
+            }
+        }
+        return false;
+    }
+
+    /**
+     * After save operations
+     */
+    public function afterSave($insert, $changedAttributes)
+    {
+        parent::afterSave($insert, $changedAttributes);
+
+        if ($insert && $this->payment_status === self::STATUS_COMPLETED) {
+            $this->generateReceiptNumber();
+            $this->updateInstallment();
+        }
+    }
+}
+
+// models/PaymentPlan.php
+<?php
+
+namespace app\models;
+
+use Yii;
+use yii\behaviors\TimestampBehavior;
+
+/**
+ * This is the model class for table "payment_plan".
+ *
+ * @property int $id
+ * @property int $reservation_id
+ * @property int $total_installments
+ * @property int $created_at
+ * @property int $updated_at
+ *
+ * @property PaymentPlanInstallment[] $paymentPlanInstallments
+ * @property Reservation $reservation
+ */
+class PaymentPlan extends \yii\db\ActiveRecord
+{
+    /**
+     * {@inheritdoc}
+     */
+    public static function tableName()
+    {
+        return 'payment_plan';
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function behaviors()
+    {
+        return [
+            TimestampBehavior::class,
+        ];
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function rules()
+    {
+        return [
+            [['reservation_id', 'total_installments'], 'required'],
+            [['reservation_id', 'total_installments'], 'integer'],
+            [['total_installments'], 'integer', 'min' => 1],
+            [['reservation_id'], 'exist', 'skipOnError' => true, 'targetClass' => Reservation::class, 'targetAttribute' => ['reservation_id' => 'id']],
+        ];
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function attributeLabels()
+    {
+        return [
+            'id' => 'ID',
+            'reservation_id' => 'Reservation ID',
+            'total_installments' => 'Total Installments',
+            'created_at' => 'Created At',
+            'updated_at' => 'Updated At',
+        ];
+    }
+
+    /**
+     * Gets query for [[PaymentPlanInstallments]].
+     */
+    public function getPaymentPlanInstallments()
+    {
+        return $this->hasMany(PaymentPlanInstallment::class, ['payment_plan_id' => 'id']);
+    }
+
+    /**
+     * Gets query for [[Reservation]].
+     */
+    public function getReservation()
+    {
+        return $this->hasOne(Reservation::class, ['id' => 'reservation_id']);
+    }
+
+    /**
+     * Create installments based on the payment plan
+     */
+    public function createInstallments()
+    {
+        if ($this->total_installments <= 0) {
+            return false;
+        }
+
+        $reservation = $this->reservation;
+        $amount_per_installment = round($reservation->balance_due / $this->total_installments, 2);
+        $remainder = $reservation->balance_due - ($amount_per_installment * $this->total_installments);
+
+        // Base date for installments
+        $base_date = strtotime($reservation->reservation_date);
+
+        // Create each installment
+        for ($i = 1; $i <= $this->total_installments; $i++) {
+            $installment = new PaymentPlanInstallment();
+            $installment->payment_plan_id = $this->id;
+            $installment->installment_number = $i;
+
+            // Calculate due date (30 days apart)
+            $due_date = strtotime("+{$i} month", $base_date);
+            $installment->due_date = date('Y-m-d', $due_date);
+
+            // Add remainder to first installment
+            $installment_amount = $amount_per_installment;
+            if ($i == 1 && $remainder > 0) {
+                $installment_amount += $remainder;
+            }
+
+            $installment->amount = $installment_amount;
+            $installment->status = PaymentPlanInstallment::STATUS_PENDING;
+
+            if (!$installment->save()) {
+                // If one fails, delete all created installments
+                PaymentPlanInstallment::deleteAll(['payment_plan_id' => $this->id]);
+                return false;
+            }
+        }
+
+        return true;
+    }
+}
+
+// models/PaymentPlanInstallment.php
+<?php
+
+namespace app\models;
+
+use Yii;
+use yii\behaviors\TimestampBehavior;
+
+/**
+ * This is the model class for table "payment_plan_installment".
+ *
+ * @property int $id
+ * @property int $payment_plan_id
+ * @property int $installment_number
+ * @property string $due_date
+ * @property float $amount
+ * @property string $status
+ * @property int|null $payment_id
+ * @property int $created_at
+ * @property int $updated_at
+ *
+ * @property Payment $payment
+ * @property PaymentPlan $paymentPlan
+ */
+class PaymentPlanInstallment extends \yii\db\ActiveRecord
+{
+    const STATUS_PENDING = 'Pending';
+    const STATUS_PAID = 'Paid';
+    const STATUS_OVERDUE = 'Overdue';
+
+    /**
+     * {@inheritdoc}
+     */
+    public static function tableName()
+    {
+        return 'payment_plan_installment';
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function behaviors()
+    {
+        return [
+            TimestampBehavior::class,
+        ];
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function rules()
+    {
+        return [
+            [['payment_plan_id', 'installment_number', 'due_date', 'amount'], 'required'],
+            [['payment_plan_id', 'installment_number', 'payment_id'], 'integer'],
+            [['due_date'], 'safe'],
+            [['amount'], 'number'],
+            [['status'], 'string'],
+            [['status'], 'in', 'range' => [self::STATUS_PENDING, self::STATUS_PAID, self::STATUS_OVERDUE]],
+            [['payment_id'], 'exist', 'skipOnError' => true, 'targetClass' => Payment::class, 'targetAttribute' => ['payment_id' => 'id']],
+            [['payment_plan_id'], 'exist', 'skipOnError' => true, 'targetClass' => PaymentPlan::class, 'targetAttribute' => ['payment_plan_id' => 'id']],
+        ];
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function attributeLabels()
+    {
+        return [
+            'id' => 'ID',
+            'payment_plan_id' => 'Payment Plan ID',
+            'installment_number' => 'Installment Number',
+            'due_date' => 'Due Date',
+            'amount' => 'Amount',
+            'status' => 'Status',
+            'payment_id' => 'Payment ID',
+            'created_at' => 'Created At',
+            'updated_at' => 'Updated At',
+        ];
+    }
+
+    /**
+     * Gets query for [[Payment]].
+     */
+    public function getPayment()
+    {
+        return $this->hasOne(Payment::class, ['id' => 'payment_id']);
+    }
+
+    /**
+     * Gets query for [[PaymentPlan]].
+     */
+    public function getPaymentPlan()
+    {
+        return $this->hasOne(PaymentPlan::class, ['id' => 'payment_plan_id']);
+    }
+
+    /**
+     * Check if installment is overdue
+     */
+    public function checkIfOverdue()
+    {
+        if ($this->status === self::STATUS_PENDING &&
+            strtotime($this->due_date) < time()) {
+            $this->status = self::STATUS_OVERDUE;
+            return $this->save();
+        }
+        return false;
+    }
+}
+
+/**
+ * CONTROLLERS
+ */
+
+// controllers/ReservationController.php
+<?php
+
+namespace app\controllers;
+
+use Yii;
+use app\models\Reservation;
+use app\models\Payment;
+use app\models\Package;
+use app\models\Pilgrim;
+use app\models\ReservationPilgrim;
+use app\models\search\ReservationSearch;
+use yii\web\Controller;
+use yii\web\NotFoundHttpException;
+use yii\filters\VerbFilter;
+use yii\filters\AccessControl;
+use yii\helpers\ArrayHelper;
+
+/**
+ * ReservationController implements the CRUD actions for Reservation model.
+ */
+class ReservationController extends Controller
+{
+    /**
+     * {@inheritdoc}
+     */
+    public function behaviors()
+    {
+        return [
+            'access' => [
+                'class' => AccessControl::class,
+                'rules' => [
+                    [
+                        'allow' => true,
+                        'roles' => ['@'],
+                    ],
+                ],
+            ],
+            'verbs' => [
+                'class' => VerbFilter::class,
+                'actions' => [
+                    'delete' => ['POST'],
+                ],
+            ],
+        ];
+    }
+
+    /**
+     * Lists all Reservation models.
+     * @return mixed
+     */
+    public function actionIndex()
+    {
+        $searchModel = new ReservationSearch();
+        $dataProvider = $searchModel->search(Yii::$app->request->queryParams);
+
+        return $this->render('index', [
+            'searchModel' => $searchModel,
+            'dataProvider' => $dataProvider,
+        ]);
+    }
+
+    /**
+     * Displays a single Reservation model.
+     * @param integer $id
+     * @return mixed
+     * @throws NotFoundHttpException if the model cannot be found
+     */
+    public function actionView($id)
+    {
+        $model = $this->findModel($id);
+
+        return $this->render('view', [
+            'model' => $model,
+        ]);
+    }
+
+    /**
+     * Creates a new Reservation model.
+     * @return mixed
+     */
+    public function actionCreate()
+    {
+        $model = new Reservation();
+        $model->user_id = Yii::$app->user->id;
+
+        if ($model->load(Yii::$app->request->post())) {
+            // Get the package to calculate the total amount
+            $package = Package::findOne($model->package_id);
+            if (!$package) {
+                Yii::$app->session->setFlash('error', 'Selected package not found.');
+                return $this->redirect(['index']);
+            }
+
+            // Calculate total amount based on package price and number of pilgrims
+            $model->total_amount = $package->price * $model->number_of_pilgrims;
+            $model->balance_due = $model->total_amount;
+
+            // Save the reservation
+            if ($model->save()) {
+                // Update package available slots
+                $model->calculateRemainingSlots();
+
+                Yii::$app->session->setFlash('success', 'Reservation created successfully. Please add pilgrims and set up payment.');
+                return $this->redirect(['add-pilgrims', 'id' => $model->id]);
+            } else {
+                Yii::$app->session->setFlash('error', 'Failed to create reservation.');
+            }
+        }
+
+        return $this->render('create', [
+            'model' => $model,
+            'packages' => ArrayHelper::map(Package::find()->all(), 'id', 'name'),
+        ]);
+    }
+
+    /**
+     * Add pilgrims to reservation
+     * @param integer $id
+     * @return mixed
+     */
+    public function actionAddPilgrims($id)
+    {
+        $reservation = $this->findModel($id);
+        $pilgrimIds = Yii::$app->request->post('pilgrim_ids', []);
+
+        if (Yii::$app->request->isPost && !empty($pilgrimIds)) {
+            // First, clear existing pilgrims
+            ReservationPilgrim::deleteAll(['reservation_id' => $id]);
+
+            // Add selected pilgrims
+            foreach ($pilgrimIds as $pilgrimId) {
+                $reservationPilgrim = new ReservationPilgrim();
+                $reservationPilgrim->reservation_id = $id;
+                $reservationPilgrim->pilgrim_id = $pilgrimId;
+                $reservationPilgrim->save();
+            }
+
+            Yii::$app->session->setFlash('success', 'Pilgrims added to reservation successfully.');
+            return $this->redirect(['setup-payment', 'id' => $id]);
+        }
+
+        // Get user's pilgrims
+        $pilgrims = Pilgrim::find()
+            ->where(['user_id' => Yii::$app->user->id])
+            ->all();
+
+        // Get already selected pilgrims
+        $selectedPilgrims = ArrayHelper::map(
+            $reservation->reservationPilgrims,
+            'pilgrim_id',
+            'pilgrim_id'
+        );
+
+        return $this->render('add-pilgrims', [
+            'reservation' => $reservation,
+            'pilgrims' => $pilgrims,
+            'selectedPilgrims' => $selectedPilgrims,
+        ]);
+    }
+
+    /**
+     * Setup payment plan for reservation
+     * @param integer $id
+     * @return mixed
+     */
+    public function actionSetupPayment($id)
+    {
+        $reservation = $this->findModel($id);
+
+        if (Yii::$app->request->isPost) {
+            $installments = (int)Yii::$app->request->post('installments', 1);
+
+            if ($installments < 1) {
+                $installments = 1;
+            }
+
+            // Create or update payment plan
+            if ($reservation->ensurePaymentPlan($installments)) {
+                Yii::$app->session->setFlash('success', 'Payment plan set up successfully.');
+                return $this->redirect(['make-payment', 'id' => $id]);
+            } else {
+                Yii::$app->session->setFlash('error', 'Failed to set up payment plan.');
+            }
+        }
+
+        return $this->render('setup-payment', [
+            'reservation' => $reservation,
+        ]);
+    }
+
+    /**
+     * Make a payment for reservation
+     * @param integer $id
+     * @return mixed
+     */
+    public function actionMakePayment($id)
+    {
+        $reservation = $this->findModel($id);
+        $payment = new Payment();
+        $payment->reservation_id = $id;
+        $payment->payment_date = date('Y-m-d H:i:s');
+
+        if ($payment->load(Yii::$app->request->post()) && $payment->validate()) {
+            // Check if payment amount is valid
+            if ($payment->amount <= 0 || $payment->amount > $reservation->balance_due) {
+                Yii::$app->session->setFlash('error', 'Invalid payment amount.');
+            } else {
+                // Process payment
+                if ($reservation->addPayment(
+                    $payment->amount,
+                    $payment->payment_method,
+                    $payment->payment_type,
+                    $payment->transaction_id
+                )) {
+                    Yii::$app->session->setFlash('success', 'Payment processed successfully.');
+                    return $this->redirect(['view', 'id' => $id]);
+                } else {
+                    Yii::$app->session->setFlash('error', 'Failed to process payment.');
+                }
+            }
+        }
+
+        return $this->render('make-payment', [
+            'reservation' => $reservation,
+            'payment' => $payment,
+        ]);
+    }
+
+    /**
+     * Updates an existing Reservation model.
+     * @param integer $id
+     * @return mixed
+     * @throws NotFoundHttpException if the model cannot be found
+     */
+    public function actionUpdate($id)
+    {
+        $model = $this->findModel($id);
+
+        // Only allow updating for pending reservations
+        if ($model->status !== Reservation::STATUS_PENDING) {
+            Yii::$app->session->setFlash('error', 'Only pending reservations can be updated.');
+            return $this->redirect(['view', 'id' => $model->id]);
+        }
+
+        if ($model->load(Yii::$app->request->post()) && $model->save()) {
+            Yii::$app->session->setFlash('success', 'Reservation updated successfully.');
+            return $this->redirect(['view', 'id' => $model->id]);
+        }
+
+        return $this->render('update', [
+            'model' => $model,
+            'packages' => ArrayHelper::map(Package::find()->all(), 'id', 'name'),
+        ]);
+    }
+
+    /**
+     * Deletes an existing Reservation model.
+     * @param integer $id
+     * @return mixed
+     * @throws NotFoundHttpException if the model cannot be found
+     */
+    public function actionDelete($id)
+    {
+        $model = $this->findModel($id);
+
+        // Only allow cancellation for pending reservations
+        if ($model->status !== Reservation::STATUS_PENDING) {
+            Yii::$app->session->setFlash('error', 'Only pending reservations can be cancelled.');
+        } else {
+            $model->status = Reservation::STATUS_CANCELLED;
+            if ($model->save()) {
+                Yii::$app->session->setFlash('success', 'Reservation cancelled successfully.');
+            } else {
+                Yii::$app->session->setFlash('error', 'Failed to cancel reservation.');
+            }
+        }
+
+        return $this->redirect(['index']);
+    }
+
+    /**
+     * Finds the Reservation model based on its primary key value.
+     * If the model is not found, a 404 HTTP exception will be thrown.
+     * @param integer $id
+     * @return Reservation the loaded model
+     * @throws NotFoundHttpException if the model cannot be found
+     */
+    protected function findModel($id)
+    {
+        $model = Reservation::findOne($id);
+        if ($model !== null && $model->user_id === Yii::$app->user->id) {
+            return $model;
+        }
+
+        throw new NotFoundHttpException('The requested page does not exist.');
+    }
+}
+
+// controllers/PaymentController.php
+<?php
+
+namespace app\controllers;
+
+use Yii;
+use app\models\Payment;
+use app\models\Reservation;
+use app\models\search\PaymentSearch;
+use yii\web\Controller;
+use yii\web\NotFoundHttpException;
+use yii\filters\VerbFilter;
+use yii\filters\AccessControl;
+
+/**
+ * PaymentController implements the CRUD actions for Payment model.
+ */
+class PaymentController extends Controller
+{
+    /**
+     * {@inheritdoc}
+     */
+    public function behaviors()
+    {
+        return [
+            'access' => [
+                'class' => AccessControl::class,
+                'rules' => [
+                    [
+                        'allow' => true,
+                        'roles' => ['@'],
+                    ],
+                ],
+            ],
+            'verbs' => [
+                'class' => VerbFilter::class,
+                'actions' => [
+                    'delete' => ['POST'],
+                ],
+            ],
+        ];
+    }
+
+    /**
+     * Lists all Payment models.
+     * @return mixed
+     */
+    public function actionIndex()
+    {
+        $searchModel = new PaymentSearch();
+        $dataProvider = $searchModel->search(Yii::$app->request->queryParams);
+
+        return $this->render('index', [
+            'searchModel' => $searchModel,
+            'dataProvider' => $dataProvider,
+        ]);
+    }
+
+    /**
+     * Displays a single Payment model.
+     * @param integer $id
+     * @return mixed
+     * @throws NotFoundHttpException if the model cannot be found
+     */
+    public function actionView($id)
+    {
+        return $this->render('view', [
+            'model' => $this->findModel($id),
+        ]);
+    }
+
+    /**
+     * Creates a new Payment model for a specific reservation.
+     * @param integer $reservationId
+     * @return mixed
+     */
+    public function actionCreate($reservationId)
+    {
+        $reservation = $this->findReservation($reservationId);
+
+        // Check if reservation is still valid for payments
+        if ($reservation->status !== Reservation::STATUS_PENDING &&
+            $reservation->status !== Reservation::STATUS_CONFIRMED) {
+            Yii::$app->session->setFlash('error', 'This reservation is no longer accepting payments.');
+            return $this->redirect(['reservation/view', 'id' => $reservationId]);
+        }
+
+        $model = new Payment();
+        $model->reservation_id = $reservationId;
+        $model->payment_date = date('Y-m-d H:i:s');
+
+        if ($model->load(Yii::$app->request->post()) && $model->validate()) {
+            // Check if payment amount is valid
+            if ($model->amount <= 0 || $model->amount > $reservation->balance_due) {
+                Yii::$app->session->setFlash('error', 'Invalid payment amount.');
+            } else {
+                // Process payment
+                if ($payment = $reservation->addPayment(
+                    $model->amount,
+                    $model->payment_method,
+                    $model->payment_type,
+                    $model->transaction_id
+                )) {
+                    Yii::$app->session->setFlash('success', 'Payment processed successfully.');
+                    return $this->redirect(['view', 'id' => $payment->id]);
+                } else {
+                    Yii::$app->session->setFlash('error', 'Failed to process payment.');
+                }
+            }
+        }
+
+        return $this->render('create', [
+            'model' => $model,
+            'reservation' => $reservation,
+        ]);
+    }
+
+    /**
+     * Generate receipt for a payment
+     * @param integer $id
+     * @return mixed
+     */
+    public function actionReceipt($id)
+    {
+        $model = $this->findModel($id);
+
+        // Check if payment is completed and has a receipt number
+        if ($model->payment_status !== Payment::STATUS_COMPLETED || empty($model->receipt_number)) {
+            Yii::$app->session->setFlash('error', 'Receipt is only available for completed payments.');
+            return $this->redirect(['view', 'id' => $id]);
+        }
+
+        return $this->render('receipt', [
+            'model' => $model,
+        ]);
+    }
+
+    /**
+     * View payment plan for a reservation
+     * @param integer $reservationId
+     * @return mixed
+     */
+    public function actionPlan($reservationId)
+    {
+        $reservation = $this->findReservation($reservationId);
+
+        // Check if payment plan exists
+        if (!$reservation->paymentPlan) {
+            Yii::$app->session->setFlash('warning', 'No payment plan found for this reservation.');
+            return $this->redirect(['reservation/view', 'id' => $reservationId]);
+        }
+
+        return $this->render('plan', [
+            'reservation' => $reservation,
+            'paymentPlan' => $reservation->paymentPlan,
+        ]);
+    }
+
+    /**
+     * Finds the Payment model based on its primary key value.
+     * If the model is not found, a 404 HTTP exception will be thrown.
+     * @param integer $id
+     * @return Payment the loaded model
+     * @throws NotFoundHttpException if the model cannot be found
+     */
+    protected function findModel($id)
+    {
+        $model = Payment::findOne($id);
+        if ($model !== null && $model->reservation->user_id === Yii::$app->user->id) {
+            return $model;
+        }
+
+        throw new NotFoundHttpException('The requested page does not exist.');
+    }
+
+    /**
+     * Finds the Reservation model based on its primary key value.
+     * If the model is not found, a 404 HTTP exception will be thrown.
+     * @param integer $id
+     * @return Reservation the loaded model
+     * @throws NotFoundHttpException if the model cannot be found
+     */
+    protected function findReservation($id)
+    {
+        $model = Reservation::findOne($id);
+        if ($model !== null && $model->user_id === Yii::$app->user->id) {
+            return $model;
+        }
+
+        throw new NotFoundHttpException('The requested page does not exist.');
+    }
+}
+
+/**
+ * VIEWS
+ */
+
+// views/reservation/index.php
+<?php
+
+use yii\helpers\Html;
+use yii\grid\GridView;
+use app\models\Reservation;
+
+/* @var $this yii\web\View */
+/* @var $searchModel app\models\search\ReservationSearch */
+/* @var $dataProvider yii\data\ActiveDataProvider */
+
+$this->title = 'My Reservations';
+$this->params['breadcrumbs'][] = $this->title;
+?>
+<div class="reservation-index">
+
+    <h1><?= Html::encode($this->title) ?></h1>
+
+    <p>
+        <?= Html::a('Create Reservation', ['create'], ['class' => 'btn btn-success']) ?>
+    </p>
+
+    <?= GridView::widget([
+        'dataProvider' => $dataProvider,
+        'filterModel' => $searchModel,
+        'columns' => [
+            'reservation_number',
+            [
+                'attribute' => 'package_id',
+                'value' => 'package.name',
+            ],
+            'reservation_date:datetime',
+            'number_of_pilgrims',
+            [
+                'attribute' => 'status',
+                'filter' => [
+                    Reservation::STATUS_PENDING => 'Pending',
+                    Reservation::STATUS_CONFIRMED => 'Confirmed',
+                    Reservation::STATUS_CANCELLED => 'Cancelled',
+                    Reservation::STATUS_COMPLETED => 'Completed',
+                ],
+            ],
+            'total_amount:currency',
+            'amount_paid:currency',
+            'balance_due:currency',
+            [
+                'class' => 'yii\grid\ActionColumn',
+                'template' => '{view} {update} {delete} {payment}',
+                'buttons' => [
+                    'payment' => function ($url, $model, $key) {
+                        if ($model->status === Reservation::STATUS_PENDING ||
+                            $model->status === Reservation::STATUS_CONFIRMED) {
+                            return Html::a(
+                                '<span class="glyphicon glyphicon-credit-card"></span>',
+                                ['/payment/create', 'reservationId' => $model->id],
+                                ['title' => 'Make Payment']
+                            );
+                        }
+                        return '';
+                    },
+                    'update' => function ($url, $model, $key) {
+                        if ($model->status === Reservation::STATUS_PENDING) {
+                            return Html::a(
+                                '<span class="glyphicon glyphicon-pencil"></span>',
+                                $url,
+                                ['title' => 'Update']
+                            );
+                        }
+                        return '';
+                    },
+                    'delete' => function ($url, $model, $key) {
+                        if ($model->status === Reservation::STATUS_PENDING) {
+                            return Html::a(
+                                '<span class="glyphicon glyphicon-trash"></span>',
+                                $url,
+                                [
+                                    'title' => 'Cancel',
+                                    'data-confirm' => 'Are you sure you want to cancel this reservation?',
+                                    'data-method' => 'post',
+                                ]
+                            );
+                        }
+                        return '';
+                    },
+                ],
+            ],
+        ],
+    ]); ?>
+</div>
+
+// views/reservation/view.php
+<?php
+
+use yii\helpers\Html;
+use yii\widgets\DetailView;
+use yii\grid\GridView;
+use app\models\Reservation;
+use app\models\Payment;
+
+/* @var $this yii\web\View */
+/* @var $model app\models\Reservation */
+
+$this->title = 'Reservation: ' . $model->reservation_number;
+$this->params['breadcrumbs'][] = ['label' => 'Reservations', 'url' => ['index']];
+$this->params['breadcrumbs'][] = $this->title;
+?>
+<div class="reservation-view">
+
+    <h1><?= Html::encode($this->title) ?></h1>
+
+    <p>
+        <?php if ($model->status === Reservation::STATUS_PENDING): ?>
+            <?= Html::a('Update', ['update', 'id' => $model->id], ['class' => 'btn btn-primary']) ?>
+            <?= Html::a('Cancel', ['delete', 'id' => $model->id], [
+                'class' => 'btn btn-danger',
+                'data' => [
+                    'confirm' => 'Are you sure you want to cancel this reservation?',
+                    'method' => 'post',
+                ],
+            ]) ?>
+        <?php endif; ?>
+        <?php if ($model->status === Reservation::STATUS_PENDING || $model->status === Reservation::STATUS_CONFIRMED): ?>
+            <?= Html::a('Make Payment', ['/payment/create', 'reservationId' => $model->id], ['class' => 'btn btn-success']) ?>
+        <?php endif; ?>
+        <?php if ($model->paymentPlan): ?>
+            <?= Html::a('View Payment Plan', ['/payment/plan', 'reservationId' => $model->id], ['class' => 'btn btn-info']) ?>
+        <?php endif; ?>
+    </p>
+
+    <?= DetailView::widget([
+        'model' => $model,
+        'attributes' => [
+            'reservation_number',
+            [
+                'attribute' => 'package_id',
+                'value' => $model->package->name,
+            ],
+            'reservation_date:datetime',
+            'number_of_pilgrims',
+            'status',
+            'total_amount:currency',
+            'amount_paid:currency',
+            'balance_due:currency',
+            'payment_deadline:date',
+            'special_requests:ntext',
+            'created_at:datetime',
+            'updated_at:datetime',
+        ],
+    ]) ?>
+
+    <h3>Pilgrims</h3>
+
+    <?php if ($model->pilgrims): ?>
+        <div class="table-responsive">
+            <table class="table table-striped table-bordered">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Passport</th>
+                        <th>Gender</th>
+                        <th>Nationality</th>
+                        <th>Phone</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($model->pilgrims as $pilgrim): ?>
+                        <tr>
+                            <td><?= $pilgrim->first_name . ' ' . $pilgrim->last_name ?></td>
+                            <td><?= $pilgrim->passport_number ?></td>
+                            <td><?= $pilgrim->gender ?></td>
+                            <td><?= $pilgrim->nationality ?></td>
+                            <td><?= $pilgrim->phone ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+    <?php else: ?>
+        <div class="alert alert-warning">No pilgrims assigned to this reservation.</div>
+    <?php endif; ?>
+
+    <h3>Payments</h3>
+
+    <?php if ($model->payments): ?>
+        <div class="table-responsive">
+            <table class="table table-striped table-bordered">
+                <thead>
+                    <tr>
+                        <th>Payment #</th>
+                        <th>Date</th>
+                        <th>Amount</th>
+                        <th>Method</th>
+                        <th>Type</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($model->payments as $payment): ?>
+                        <tr>
+                            <td><?= $payment->payment_number ?></td>
+                            <td><?= Yii::$app->formatter->asDatetime($payment->payment_date) ?></td>
+                            <td><?= Yii::$app->formatter->asCurrency($payment->amount) ?></td>
+                            <td><?= $payment->payment_method ?></td>
+                            <td><?= $payment->payment_type ?></td>
+                            <td><?= $payment->payment_status ?></td>
+                            <td>
+                                <?= Html::a('View', ['/payment/view', 'id' => $payment->id], ['class' => 'btn btn-xs btn-default']) ?>
+                                <?php if ($payment->payment_status === Payment::STATUS_COMPLETED && !empty($payment->receipt_number)): ?>
+                                    <?= Html::a('Receipt', ['/payment/receipt', 'id' => $payment->id], ['class' => 'btn btn-xs btn-success']) ?>
+                                <?php endif; ?>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+    <?php else: ?>
+        <div class="alert alert-warning">No payments made for this reservation.</div>
+    <?php endif; ?>
+</div>
+
+// views/reservation/create.php
+<?php
+
+use yii\helpers\Html;
+use yii\widgets\ActiveForm;
+
+/* @var $this yii\web\View */
+/* @var $model app\models\Reservation */
+/* @var $packages array */
+
+$this->title = 'Create Reservation';
+$this->params['breadcrumbs'][] = ['label' => 'Reservations', 'url' => ['index']];
+$this->params['breadcrumbs'][] = $this->title;
+?>
+<div class="reservation-create">
+
+    <h1><?= Html::encode($this->title) ?></h1>
+
+    <div class="reservation-form">
+        <?php $form = ActiveForm::begin(); ?>
+
+        <?= $form->field($model, 'package_id')->dropDownList($packages, ['prompt' => 'Select Package']) ?>
+
+        <?= $form->field($model, 'number_of_pilgrims')->textInput(['type' => 'number', 'min' => 1]) ?>
+
+        <?= $form->field($model, 'payment_deadline')->textInput(['type' => 'date']) ?>
+
+        <?= $form->field($model, 'special_requests')->textarea(['rows' => 6]) ?>
+
+        <div class="form-group">
+            <?= Html::submitButton('Continue', ['class' => 'btn btn-success']) ?>
+        </div>
+
+        <?php ActiveForm::end(); ?>
+    </div>
+</div>
+
+// views/reservation/add-pilgrims.php
+<?php
+
+use yii\helpers\Html;
+use yii\widgets\ActiveForm;
+
+/* @var $this yii\web\View */
+/* @var $reservation app\models\Reservation */
+/* @var $pilgrims app\models\Pilgrim[] */
+/* @var $selectedPilgrims array */
+
+$this->title = 'Add Pilgrims to Reservation';
+$this->params['breadcrumbs'][] = ['label' => 'Reservations', 'url' => ['index']];
+$this->params['breadcrumbs'][] = ['label' => $reservation->reservation_number, 'url' => ['view', 'id' => $reservation->id]];
+$this->params['breadcrumbs'][] = $this->title;
+?>
+<div class="reservation-pilgrims">
+
+    <h1><?= Html::encode($this->title) ?></h1>
+
+    <div class="alert alert-info">
+        Select up to <?= $reservation->number_of_pilgrims ?> pilgrims for this reservation.
+    </div>
+
+    <?php $form = ActiveForm::begin(); ?>
+
+    <?php if ($pilgrims): ?>
+        <div class="form-group">
+            <label>Select Pilgrims</label>
+            <div class="checkbox-list">
+                <?php foreach ($pilgrims as $pilgrim): ?>
+                    <div class="checkbox">
+                        <label>
+                            <input type="checkbox" name="pilgrim_ids[]" value="<?= $pilgrim->id ?>" <?= in_array($pilgrim->id, $selectedPilgrims) ? 'checked' : '' ?>>
+                            <?= $pilgrim->first_name . ' ' . $pilgrim->last_name ?> (<?= $pilgrim->passport_number ?>)
+                        </label>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+        </div>
+    <?php else: ?>
+        <div class="alert alert-warning">
+            You don't have any pilgrims registered. <?= Html::a('Add a pilgrim', ['/pilgrim/create']) ?> first.
+        </div>
+    <?php endif; ?>
+
+    <div class="form-group">
+        <?= Html::submitButton('Continue', ['class' => 'btn btn-success', 'disabled' => empty($pilgrims)]) ?>
+        <?= Html::a('Skip', ['setup-payment', 'id' => $reservation->id], ['class' => 'btn btn-default']) ?>
+    </div>
+
+    <?php ActiveForm::end(); ?>
+</div>
+
+// views/reservation/setup-payment.php
+<?php
+
+use yii\helpers\Html;
+use yii\widgets\ActiveForm;
+
+/* @var $this yii\web\View */
+/* @var $reservation app\models\Reservation */
+
+$this->title = 'Setup Payment Plan';
+$this->params['breadcrumbs'][] = ['label' => 'Reservations', 'url' => ['index']];
+$this->params['breadcrumbs'][] = ['label' => $reservation->reservation_number, 'url' => ['view', 'id' => $reservation->id]];
+$this->params['breadcrumbs'][] = $this->title;
+?>
+<div class="reservation-payment-plan">
+
+    <h1><?= Html::encode($this->title) ?></h1>
+
+    <div class="alert alert-info">
+        Your total amount due is <?= Yii::$app->formatter->asCurrency($reservation->balance_due) ?>.
+        You can pay in installments or all at once.
+    </div>
+
+    <?php $form = ActiveForm::begin(); ?>
+
+    <div class="form-group">
+        <label for="installments">Number of Installments</label>
+        <input type="number" id="installments" name="installments" class="form-control" min="1" max="12" value="<?= $reservation->paymentPlan ? $reservation->paymentPlan->total_installments : 1 ?>">
+        <div class="help-block">
+            Choose how many monthly installments you want to split your payment into.
+        </div>
+    </div>
+
+    <div class="form-group">
+        <?= Html::submitButton('Setup Payment Plan', ['class' => 'btn btn-success']) ?>
+        <?= Html::a('Make Payment Now', ['make-payment', 'id' => $reservation->id], ['class' => 'btn btn-primary']) ?>
+    </div>
+
+    <?php ActiveForm::end(); ?>
+</div>
+
+// views/reservation/make-payment.php
+<?php
+
+use yii\helpers\Html;
+use yii\widgets\ActiveForm;
+use app\models\Payment;
+
+/* @var $this yii\web\View */
+/* @var $reservation app\models\Reservation */
+/* @var $payment app\models\Payment */
+
+$this->title = 'Make Payment';
+$this->params['breadcrumbs'][] = ['label' => 'Reservations', 'url' => ['index']];
+$this->params['breadcrumbs'][] = ['label' => $reservation->reservation_number, 'url' => ['view', 'id' => $reservation->id]];
+$this->params['breadcrumbs'][] = $this->title;
+?>
+<div class="reservation-make-payment">
+
+    <h1><?= Html::encode($this->title) ?></h1>
+
+    <div class="alert alert-info">
+        <p><strong>Reservation Number:</strong> <?= $reservation->reservation_number ?></p>
+        <p><strong>Total Amount:</strong> <?= Yii::$app->formatter->asCurrency($reservation->total_amount) ?></p>
+        <p><strong>Amount Paid:</strong> <?= Yii::$app->formatter->asCurrency($reservation->amount_paid) ?></p>
+        <p><strong>Balance Due:</strong> <?= Yii::$app->formatter->asCurrency($reservation->balance_due) ?></p>
+    </div>
+
+    <?php $form = ActiveForm::begin(); ?>
+
+    <?= $form->field($payment, 'amount')->textInput(['type' => 'number', 'step' => '0.01', 'min' => '0.01', 'max' => $reservation->balance_due]) ?>
+
+    <?= $form->field($payment, 'payment_method')->dropDownList([
+        Payment::METHOD_CASH => 'Cash',
+        Payment::METHOD_CREDIT_CARD => 'Credit Card',
+        Payment::METHOD_BANK_TRANSFER => 'Bank Transfer',
+        Payment::METHOD_PAYPAL => 'PayPal',
+        Payment::METHOD_OTHER => 'Other',
+    ]) ?>
+
+    <?= $form->field($payment, 'payment_type')->dropDownList([
+        Payment::TYPE_DEPOSIT => 'Deposit',
+        Payment::TYPE_INSTALLMENT => 'Installment',
+        Payment::TYPE_FULL_PAYMENT => 'Full Payment',
+        Payment::TYPE_ADDITIONAL_SERVICE => 'Additional Service',
+    ]) ?>
+
+    <?= $form->field($payment, 'transaction_id')->textInput(['maxlength' => true]) ?>
+
+    <?= $form->field($payment, 'notes')->textarea(['rows' => 3]) ?>
+
+    <div class="form-group">
+        <?= Html::submitButton('Process Payment', ['class' => 'btn btn-success']) ?>
+    </div>
+
+    <?php ActiveForm::end(); ?>
+</div>
+
+// views/payment/index.php
+<?php
+
+use yii\helpers\Html;
+use yii\grid\GridView;
+use app\models\Payment;
+
+/* @var $this yii\web\View */
+/* @var $searchModel app\models\search\PaymentSearch */
+/* @var $dataProvider yii\data\ActiveDataProvider */
+
+$this->title = 'My Payments';
+$this->params['breadcrumbs'][] = $this->title;
+?>
+<div class="payment-index">
+
+    <h1><?= Html::encode($this->title) ?></h1>
+
+    <?= GridView::widget([
+        'dataProvider' => $dataProvider,
+        'filterModel' => $searchModel,
+        'columns' => [
+            'payment_number',
+            [
+                'attribute' => 'reservation_id',
+                'value' => 'reservation.reservation_number',
+            ],
+            'amount:currency',
+            'payment_date:datetime',
+            'payment_method',
+            'payment_type',
+            'payment_status',
+            [
+                'class' => 'yii\grid\ActionColumn',
+                'template' => '{view} {receipt}',
+                'buttons' => [
+                    'receipt' => function ($url, $model, $key) {
+                        if ($model->payment_status === Payment::STATUS_COMPLETED && !empty($model->receipt_number)) {
+                            return Html::a(
+                                '<span class="glyphicon glyphicon-file"></span>',
+                                ['receipt', 'id' => $model->id],
+                                ['title' => 'Receipt']
+                            );
+                        }
+                        return '';
+                    },
+                ],
+            ],
+        ],
+    ]); ?>
+</div>
+
+// views/payment/view.php
+<?php
+
+use yii\helpers\Html;
+use yii\widgets\DetailView;
+use app\models\Payment;
+
+/* @var $this yii\web\View */
+/* @var $model app\models\Payment */
+
+$this->title = 'Payment: ' . $model->payment_number;
+$this->params['breadcrumbs'][] = ['label' => 'Payments', 'url' => ['index']];
+$this->params['breadcrumbs'][] = $this->title;
+?>
+<div class="payment-view">
+
+    <h1><?= Html::encode($this->title) ?></h1>
+
+    <p>
+        <?php if ($model->payment_status === Payment::STATUS_COMPLETED && !empty($model->receipt_number)): ?>
+            <?= Html::a('View Receipt', ['receipt', 'id' => $model->id], ['class' => 'btn btn-primary']) ?>
+        <?php endif; ?>
+    </p>
+
+    <?= DetailView::widget([
+        'model' => $model,
+        'attributes' => [
+            'payment_number',
+            [
+                'attribute' => 'reservation_id',
+                'value' => $model->reservation->reservation_number,
+            ],
+            'amount:currency',
+            'payment_date:datetime',
+            'payment_method',
+            'transaction_id',
+            'payment_status',
+            'payment_type',
+            'notes:ntext',
+            'receipt_number',
+            'created_at:datetime',
+            'updated_at:datetime',
+        ],
+    ]) ?>
+</div>
+
+// views/payment/receipt.php
+<?php
+
+use yii\helpers\Html;
+
+/* @var $this yii\web\View */
+/* @var $model app\models\Payment */
+
+$this->title = 'Payment Receipt: ' . $model->receipt_number;
+$this->params['breadcrumbs'][] = ['label' => 'Payments', 'url' => ['index']];
+$this->params['breadcrumbs'][] = ['label' => $model->payment_number, 'url' => ['view', 'id' => $model->id]];
+$this->params['breadcrumbs'][] = 'Receipt';
+
+$organization = Yii::$app->params['organizationName'] ?? 'Hajj & Umrah Services';
+$organizationAddress = Yii::$app->params['organizationAddress'] ?? '123 Islamic Way, Mecca';
+$organizationPhone = Yii::$app->params

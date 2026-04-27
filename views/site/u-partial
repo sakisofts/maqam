@@ -1,0 +1,258 @@
+<?php
+
+/**
+ * _account_settings.php
+ * For account deletion, data export, and other account management options
+ */
+?>
+
+<?php
+/* @var $model app\models\User */
+
+use yii\helpers\Html;
+use yii\widgets\ActiveForm;
+
+?>
+
+<div class="account-settings-form">
+    <div class="box box-danger">
+        <div class="box-header with-border">
+            <h3 class="box-title">Account Data</h3>
+        </div>
+        <div class="box-body">
+            <p>You can request a copy of all data associated with your account.</p>
+
+            <?= Html::a('<i class="fa fa-download"></i> Request Data Export', ['user/export-data'], [
+                'class' => 'btn btn-info',
+                'data' => [
+                    'method' => 'post',
+                ],
+            ]) ?>
+
+            <div class="help-block">
+                We will process your request and send you an email with a download link when your data is ready.
+            </div>
+        </div>
+    </div>
+
+    <div class="box box-danger">
+        <div class="box-header with-border">
+            <h3 class="box-title">Deactivate Account</h3>
+        </div>
+        <div class="box-body">
+            <p>Temporarily deactivate your account. You can reactivate it at any time by signing in.</p>
+
+            <?= Html::a('<i class="fa fa-ban"></i> Deactivate Account', ['user/deactivate'], [
+                'class' => 'btn btn-warning',
+                'data' => [
+                    'confirm' => 'Are you sure you want to deactivate your account? Your profile will be hidden until you sign in again.',
+                    'method' => 'post',
+                ],
+            ]) ?>
+        </div>
+    </div>
+
+    <div class="box box-danger">
+        <div class="box-header with-border">
+            <h3 class="box-title">Delete Account</h3>
+        </div>
+        <div class="box-body">
+            <div class="alert alert-danger">
+                <strong>Warning!</strong> This action is permanent and cannot be undone.
+                All your data will be permanently deleted from our system.
+            </div>
+
+            <p>To delete your account, please enter your current password:</p>
+
+            <?php $form = ActiveForm::begin([
+                'id' => 'delete-account-form',
+                'action' => ['user/delete-account'],
+                'method' => 'post',
+            ]); ?>
+
+            <?= $form->field($model, 'password')->passwordInput([
+                'maxlength' => true,
+                'placeholder' => 'Enter your current password',
+            ])->label(false) ?>
+
+            <div class="form-group">
+                <?= Html::submitButton('<i class="fa fa-trash"></i> Delete My Account', [
+                    'class' => 'btn btn-danger',
+                    'data' => [
+                        'confirm' => 'Are you absolutely sure you want to delete your account? This action CANNOT be undone!',
+                    ],
+                ]) ?>
+            </div>
+
+            <?php ActiveForm::end(); ?>
+        </div>
+    </div>
+</div>
+
+<?php
+/**
+ * _sessions.php
+ * For viewing and managing active sessions
+ */
+?>
+
+<?php
+/* @var $sessions array Active sessions */
+
+use yii\helpers\Html;
+?>
+
+<div class="sessions-view">
+    <div class="box box-primary">
+        <div class="box-header with-border">
+            <h3 class="box-title">Active Sessions</h3>
+        </div>
+        <div class="box-body">
+            <p>These are all the devices currently logged into your account. You can revoke access for any session you don't recognize.</p>
+
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead>
+                    <tr>
+                        <th>Device</th>
+                        <th>Location</th>
+                        <th>Last Active</th>
+                        <th>IP Address</th>
+                        <th>Actions</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <?php foreach ($sessions as $session): ?>
+                        <tr class="<?= $session['current'] ? 'success' : '' ?>">
+                            <td>
+                                <i class="fa fa-<?= $session['device_type'] == 'mobile' ? 'mobile' : 'desktop' ?>"></i>
+                                <?= Html::encode($session['browser'] . ' on ' . $session['platform']) ?>
+                                <?php if ($session['current']): ?>
+                                    <span class="label label-info">Current</span>
+                                <?php endif; ?>
+                            </td>
+                            <td><?= Html::encode($session['location']) ?></td>
+                            <td><?= Yii::$app->formatter->asDatetime($session['last_active']) ?></td>
+                            <td><?= Html::encode($session['ip_address']) ?></td>
+                            <td>
+                                <?php if (!$session['current']): ?>
+                                    <?= Html::a('<i class="fa fa-sign-out"></i> Logout', ['user/revoke-session', 'id' => $session['id']], [
+                                        'class' => 'btn btn-xs btn-danger',
+                                        'data' => [
+                                            'confirm' => 'Are you sure you want to end this session?',
+                                            'method' => 'post',
+                                        ],
+                                    ]) ?>
+                                <?php else: ?>
+                                    <span class="text-muted">Current session</span>
+                                <?php endif; ?>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="text-center">
+                <?= Html::a('<i class="fa fa-sign-out"></i> Logout from all other devices', ['user/revoke-all-sessions'], [
+                    'class' => 'btn btn-warning',
+                    'data' => [
+                        'confirm' => 'Are you sure you want to log out from all other devices?',
+                        'method' => 'post',
+                    ],
+                ]) ?>
+            </div>
+        </div>
+    </div>
+</div>
+
+<?php
+/**
+ * _activity_log.php
+ * For displaying user activity history
+ */
+?>
+
+<?php
+/* @var $activities array User activities */
+
+use yii\helpers\Html;
+use yii\widgets\LinkPager;
+?>
+
+<div class="activity-log">
+    <div class="box box-primary">
+        <div class="box-header with-border">
+            <h3 class="box-title">Account Activity</h3>
+            <div class="box-tools">
+                <div class="input-group input-group-sm" style="width: 150px;">
+                    <input type="text" name="table_search" class="form-control pull-right" placeholder="Search activities">
+                    <div class="input-group-btn">
+                        <button type="submit" class="btn btn-default"><i class="fa fa-search"></i></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="box-body">
+            <div class="timeline">
+                <?php
+                $currentDate = null;
+                foreach ($activities as $activity):
+                    $activityDate = Yii::$app->formatter->asDate($activity['created_at']);
+                    if ($currentDate !== $activityDate):
+                        $currentDate = $activityDate;
+                        ?>
+                        <div class="time-label">
+                            <span class="bg-blue"><?= $activityDate ?></span>
+                        </div>
+                    <?php endif; ?>
+
+                    <div>
+                        <i class="fa fa-<?= $activity['icon'] ?> bg-<?= $activity['type'] ?>"></i>
+                        <div class="timeline-item">
+                            <span class="time"><i class="fa fa-clock-o"></i> <?= Yii::$app->formatter->asTime($activity['created_at']) ?></span>
+                            <h3 class="timeline-header"><?= Html::encode($activity['title']) ?></h3>
+                            <?php if (!empty($activity['description'])): ?>
+                                <div class="timeline-body">
+                                    <?= Html::encode($activity['description']) ?>
+                                </div>
+                            <?php endif; ?>
+
+                            <?php if (!empty($activity['location']) || !empty($activity['ip_address'])): ?>
+                                <div class="timeline-footer">
+                                    <?php if (!empty($activity['location'])): ?>
+                                        <span class="text-muted"><i class="fa fa-map-marker"></i> <?= Html::encode($activity['location']) ?></span>
+                                    <?php endif; ?>
+
+                                    <?php if (!empty($activity['ip_address'])): ?>
+                                        <span class="text-muted"><i class="fa fa-globe"></i> <?= Html::encode($activity['ip_address']) ?></span>
+                                    <?php endif; ?>
+
+                                    <?php if ($activity['type'] == 'danger'): ?>
+                                        <?= Html::a('<i class="fa fa-ban"></i> Report Suspicious Activity', ['user/report-suspicious', 'id' => $activity['id']], [
+                                            'class' => 'btn btn-danger btn-xs',
+                                            'data' => [
+                                                'confirm' => 'Are you sure you want to report this activity as suspicious?',
+                                                'method' => 'post',
+                                            ],
+                                        ]) ?>
+                                    <?php endif; ?>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+
+                <div>
+                    <i class="fa fa-clock-o bg-gray"></i>
+                </div>
+            </div>
+
+            <div class="text-center">
+                <?= LinkPager::widget([
+                    'pagination' => $pagination,
+                ]); ?>
+            </div>
+        </div>
+    </div>
+</div>

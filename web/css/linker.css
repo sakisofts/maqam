@@ -1,0 +1,101 @@
+/* Target Yii2 LinkPager container */
+.pagination {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end; /* Align to the right */
+    gap: 8px;
+    margin: 20px 0;
+    padding: 0;
+    list-style: none;
+    width: 100%;
+    overflow: hidden !important;
+}
+
+.pagination .active {
+     background: none !important;
+    border:none !important;
+}
+
+/* Common styles for all pagination items */
+.pagination > li {
+    display: inline-flex;
+}
+
+.pagination > li > a,
+.pagination > li > span {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 40px;
+    height: 40px;
+    border-radius: 50% !important; /* Force circular shape */
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    background-color: #f0f0f0;
+    color: #333;
+    border: none;
+    padding: 0;
+    margin: 0;
+    overflow: hidden !important;
+
+}
+
+/* Previous/Next buttons - make them circular too */
+.pagination > li.prev > a,
+.pagination > li.prev > span,
+.pagination > li.next > a,
+.pagination > li.next > span {
+    border-radius: 50% !important;
+    min-width: 40px;
+    padding: 0;
+    outline: none !important;
+    border:none !important;
+    overflow: hidden !important;
+}
+
+/* Hover state */
+.pagination > li > a:hover,
+.pagination > li > span:hover {
+    background-color: #e5e5e5;
+    text-decoration: none;
+    border-radius: 50% !important;
+}
+
+/* Active state */
+.pagination > li.active > a,
+.pagination > li.active > span {
+    background-color: #2185d0;
+    color: white;
+    border-color: #2185d0;
+    border-radius: 50% !important;
+}
+
+.pagination > li.active > a:hover,
+.pagination > li.active > span:hover {
+    background-color: #1a70b7;
+    color: white;
+    border-radius: 50% !important;
+}
+
+/* Disabled state */
+.pagination > li.disabled > span,
+.pagination > li.disabled > a {
+    opacity: 0.6;
+    cursor: not-allowed;
+    background-color: #f0f0f0;
+    border-radius: 50% !important;
+}
+
+.page-item.active a {
+    background-color: #2185d0;
+    color: white;
+    border-radius: 50% !important;
+}
+
+/* Ensure pager container float */
+.pagination-container {
+    float: right;
+    width: 100%;
+}

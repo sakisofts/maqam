@@ -1,0 +1,450 @@
+*{
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 400;
+
+}
+
+ body {
+     font-family: 'Arial', sans-serif;
+     background-color: #f4f4f4;
+     margin: 0;
+     padding: 0;
+     overflow-x: hidden;
+ }
+
+.wrapper {
+    display: flex;
+    width: 100%;
+}
+
+.main-header {
+    background-color: #2185d0;
+    color: white;
+    padding: 15px 20px;
+    display: flex;
+    justify-content: start;
+    align-items: center;
+    position: fixed;
+    width: 100%;
+    top: 0;
+    z-index: 1000;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    gap: 4em;
+}
+#userDropdownMenu {
+    cursor: pointer;
+}
+#userDropdownMenu::after {
+    content: "";
+    display: flex;
+    margin: auto;
+    clear: both;
+
+}
+
+.user-profile{
+    margin-left: auto;
+}
+
+.main-header .logo {
+    font-size: 24px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+}
+
+.main-header .logo img {
+    margin-right: 10px;
+    width: 40px;
+}
+
+.main-header .navbar-toggle {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 24px;
+    cursor: pointer;
+}
+
+.main-header .user-profile {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.user-profile i {
+    color: #999;
+    font-size: 24px;
+}
+
+
+/* Sidebar styles */
+#sidebar {
+    min-width: 250px;
+    max-width: 250px;
+    background-color: #2185d0;
+    color: white;
+    position: fixed;
+    top: 65px;
+    height: calc(100vh - 65px);
+    transition: all 0.3s;
+    z-index: 999;
+    overflow-y: auto;
+    padding-top: 2em;
+}
+
+#sidebar .nav-item {
+    padding: 15px 20px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+}
+
+#sidebar .nav-item:hover {
+    background-color: rgba(255,255,255,0.1);
+}
+
+#sidebar .nav-item.active {
+    background-color: #1a6cb0;
+}
+
+
+
+#sidebar .nav-item i {
+    margin-right: 10px;
+}
+
+#sidebar .nav-item a {
+    color: white;
+    text-decoration: none;
+    font-size: 16px;
+    display: block;
+    width: 100%;
+}
+
+/* Content area styles */
+#content {
+    width: calc(100% - 250px);
+    margin-left: 250px;
+    padding: 85px 20px 20px;
+    transition: all 0.3s;
+}
+
+.container {
+    background-color: white;
+    border-radius: 5px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    padding: 20px;
+}
+
+/* Breadcrumbs */
+.breadcrumb-container {
+    background-color: rgba(0,0,0,0.02);
+    padding: 10px 15px;
+    margin-bottom: 20px;
+    border-radius: 5px;
+}
+
+.breadcrumb {
+    display: flex;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.breadcrumb-item {
+    margin-right: 5px;
+}
+
+.breadcrumb-item + .breadcrumb-item::before {
+    content: ">";
+    margin-right: 5px;
+}
+
+/* Booking table styles */
+.booking-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.booking-header h2 {
+    margin: 0;
+    font-size: 24px;
+}
+
+.table-controls {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+}
+
+.table-controls select,
+.table-controls input {
+    padding: 6px 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.add-booking-btn {
+    background-color: #e53935;
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.booking-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.booking-table th {
+    text-align: left;
+    padding: 10px;
+    background-color: #f9f9f9;
+    border-bottom: 2px solid #ddd;
+}
+
+.booking-table td {
+    padding: 10px;
+    border-bottom: 1px solid #eee;
+}
+
+.booking-table tr:hover {
+    background-color: #f5f5f5;
+}
+
+/* Status badges */
+.status-badge {
+    padding: 5px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: bold;
+    text-align: center;
+    display: inline-block;
+    min-width: 80px;
+}
+
+.approved {
+    background-color: #2e7d32;
+    color: white;
+}
+
+.pending {
+    background-color: #ff9800;
+    color: white;
+}
+
+.cancelled {
+    background-color: #e53935;
+    color: white;
+}
+
+/* Payment badges */
+.payment-badge {
+    padding: 5px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: bold;
+    text-align: center;
+    display: inline-block;
+    min-width: 80px;
+}
+
+.complete {
+    background-color: #2e7d32;
+    color: white;
+}
+
+.ongoing {
+    background-color: #e53935;
+    color: white;
+}
+
+.refund {
+    background-color: #3f51b5;
+    color: white;
+}
+
+.unfinished {
+    background-color: #212121;
+    color: white;
+}
+
+/* Action buttons */
+.action-btn {
+    color: #2185d0;
+    background: none;
+    border: none;
+    cursor: pointer;
+    margin-right: 5px;
+    font-size: 16px;
+}
+
+.delete-btn {
+    color: #e53935;
+}
+
+/* Pagination */
+.pagination {
+    display: flex;
+    justify-content: center;
+    margin-top: 20px;
+    gap: 5px;
+}
+
+.pagination a,
+.pagination span {
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    text-decoration: none;
+    color: #333;
+}
+
+.pagination .active {
+    background-color: #2185d0;
+    color: white;
+    border-color: #2185d0;
+}
+
+/* Responsive */
+@media (max-width: 992px) {
+    #sidebar {
+        margin-left: -250px;
+    }
+
+    #sidebar.active {
+        margin-left: 0;
+    }
+
+    #content {
+        width: 100%;
+        margin-left: 0;
+    }
+
+    #content.active {
+        margin-left: 250px;
+    }
+}
+
+
+/* input configuration */
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+}
+
+.input-group {
+    display: flex;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    overflow: hidden;
+    background-color: #f8f9ff;
+}
+
+.input-group-prepend {
+    background-color: #f8f9ff;
+    padding: 10px;
+    display: flex;
+    align-items: center;
+    color: #666;
+}
+.select2-container{
+ flex-shrink: 0;
+ min-width: 230px;
+}
+
+.form-control {
+    flex-grow: 1;
+    padding: 10px;
+    border: none !important;
+    background-color: #f8f9ff !important;
+    width: 100% !important;
+}
+
+.remember-me {
+    display: flex;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.btn-login {
+    width: 100%;
+    padding: 12px;
+    background-color: #4e54cc;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 500;
+}
+
+.maqam-logo {
+    max-width: 150px;
+    margin-bottom: 20px;
+}
+
+
+/* Ensure Select2 dropdowns have adequate width */
+.select2-container .select2-dropdown {
+    min-width: 250px; /* Adjust this value as needed */
+    width: auto !important;
+}
+
+/* Custom class for wider dropdowns */
+.select2-dropdown-large {
+    min-width: 300px;
+}
+
+/* Prevent text wrapping in dropdown items */
+.select2-results__option {
+    white-space: nowrap;
+}
+
+
+/*tabs updates */
+.nav-tabs .nav-link {
+    color: #6c757d;
+    border: none;
+    padding: 0.75rem 1rem;
+    position: relative;
+}
+
+.nav-tabs .nav-link.active {
+    color: var(--bs-primary);
+    background-color: transparent;
+    border: none;
+}
+
+.nav-tabs .nav-link.active:after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background-color: #0d6efd;
+}
+
+.badge {
+    font-weight: 500;
+}

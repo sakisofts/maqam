@@ -1,0 +1,172 @@
+/**
+ * CSS for Receipt widget
+ *
+ * Includes styles for various paper sizes including 80mm thermal printer
+ */
+
+.receipt-container {
+    font-family: Arial, sans-serif;
+    margin: 0 auto;
+    padding: 10px;
+    box-sizing: border-box;
+    background-color: #fff;
+}
+
+/* Paper size styles */
+.paper-80mm {
+    width: 80mm;
+    max-width: 80mm;
+    font-size: 10px;
+}
+
+.paper-a4 {
+    width: 210mm;
+    max-width: 210mm;
+}
+
+.paper-letter {
+    width: 8.5in;
+    max-width: 8.5in;
+}
+
+/* Header styles */
+.receipt-header {
+    display: inline-block;
+    position: absolute;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    padding: 2px;
+}
+
+.logo-container, .brand-container {
+    display: flex;
+    align-items: center;
+}
+
+.company-logo, .brand-logo {
+    max-height: 80px;
+    margin-right: 10px;
+
+}
+
+.company-name, .brand-name {
+    font-weight: bold;
+    font-size: 1.2em;
+}
+
+.tagline, .brand-tagline {
+    font-size: 0.8em;
+    color: #666;
+}
+
+/* Address styles */
+.address-container {
+    text-align: right;
+    margin-bottom: 10px;
+    font-size: 0.9em;
+    line-height: 1.4;
+}
+
+/* Receipt title */
+.receipt-title {
+    background-color: #3498db;
+    color: white;
+    padding: 8px;
+    font-weight: bold;
+    text-align: center;
+    margin-bottom: 10px;
+}
+
+/* Data table styles */
+.receipt-data {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 10px;
+}
+
+.receipt-data tr:nth-child(even) {
+    background-color: #f5f5f5;
+}
+
+.receipt-data td {
+    padding: 8px;
+    border: 1px solid #ddd;
+}
+
+.data-label {
+    font-weight: bold;
+    width: 40%;
+}
+
+.data-value {
+    width: 60%;
+}
+
+/* Footer styles */
+.receipt-footer {
+    font-size: 0.8em;
+    color: #666;
+    text-align: center;
+    margin-top: 10px;
+    padding-top: 5px;
+    border-top: 1px dashed #ccc;
+}
+
+/* Print button */
+.print-button {
+    display: block;
+    margin: 10px auto;
+    padding: 8px 15px;
+    background-color: #3498db;
+    color: white;
+    border: none;
+    cursor: pointer;
+}
+
+/* Print-specific styles */
+@media print {
+    .receipt-print-container {
+        width: 100%;
+    }
+
+    .print-button {
+        display: none;
+    }
+
+    /* Special handling for 80mm thermal printers */
+    .paper-80mm {
+        width: 100%;
+        max-width: none;
+    }
+
+    /* Remove any margin and padding when printing */
+    body, html {
+        margin: 0;
+        padding: 0;
+    }
+
+    /* Ensure backgrounds are printed */
+    .receipt-title {
+        -webkit-print-color-adjust: exact;
+        color-adjust: exact;
+    }
+}
+
+/* 80mm thermal printer specific adjustments */
+@media print and (max-width: 80mm) {
+    .receipt-container {
+        padding: 2mm;
+    }
+
+    .receipt-data td {
+        padding: 1mm;
+    }
+
+    .company-logo, .brand-logo {
+        max-height: 2mm;
+        -webkit-print-color-adjust: exact;
+        color-adjust: exact;
+        print-color-adjust: exact;
+    }
+}
