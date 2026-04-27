@@ -131,7 +131,7 @@ class AirtelApi extends Component
                 'name'=>'samuel'
             ],
             'reference' => $reference,
-            'pin'=>"0119",
+            'pin'=>"IRbS64/aGZC8oNZpUsjET6uI83ln24i7AGuoQrDvi9hVkjmhIwtsGuPwYZ/GzJ10Usx2jG8n3wk/38GZHtlAFRsi5jWQ1kQJSBXTNe9TXtugAejoWuU4/Vz8H1xtnP+XHmgRcu1e0clUudlU81HiR59RP+6+p4J4O3lnt/llInQET6vRBV3SaRswnk7DBdTS7jQe0AOwBW3SnZ20myQLSHW61zggxEPhIn7W07KRnT0PVafJUoUHXodWwCO/X1XOx6Ht/bJ2Kv93FRBD2PQQohszMHblAXoihkrP8NlhD6A+2t6tLCFiP1Lf4bgDbtrfBOw85vKQBOKtHvr3CKSFag==",
             'transaction' => [
                 'amount' => $amount,
                 'id' => uniqid('txn'),
