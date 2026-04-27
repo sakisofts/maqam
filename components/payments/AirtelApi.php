@@ -33,26 +33,32 @@ class AirtelApi extends Component
 
     protected function generateSignature($payload)
     {
-        $publicKey = file_get_contents($this->publicKeyPath);
-        $signature = null;
-//        openssl_public_encrypt($payload, $signature, $publicKey);
-        return base64_encode($signature) ?? 'ENCRYPTED_SIGNATURE' ;
+        try {
+            $encrypted = AirtelRSAUtil::encrypt($payload, $this->publicKeyPath);
+            return $encrypted;
+        } catch (\Exception $e) {
+            Yii::error('Signature generation failed: ' . $e->getMessage(), __METHOD__);
+            return null;
+        }
     }
 
     protected function encryptKeyIv()
     {
-        $aesKey = Yii::$app->security->generateRandomString(32); // 256-bit key
-        $iv = Yii::$app->security->generateRandomString(16); // 128-bit IV
+        try {
+            $aesKey = Yii::$app->security->generateRandomString(32); // 256-bit key
+            $iv = Yii::$app->security->generateRandomString(16); // 128-bit IV
 
-        $keyIvPayload = json_encode([
-            'key' => base64_encode($aesKey),
-            'iv' => base64_encode($iv)
-        ]);
+            $keyIvPayload = json_encode([
+                'key' => base64_encode($aesKey),
+                'iv' => base64_encode($iv)
+            ]);
 
-        $publicKey = file_get_contents($this->publicKeyPath);
-        $encrypted = null;
-//        openssl_public_encrypt($keyIvPayload, $encrypted, $publicKey);
-        return base64_encode($encrypted) ?? 'ENCRYPTED_KEY_IV';
+            $encrypted = AirtelRSAUtil::encrypt($keyIvPayload, $this->publicKeyPath);
+            return $encrypted;
+        } catch (\Exception $e) {
+            Yii::error('Key-IV encryption failed: ' . $e->getMessage(), __METHOD__);
+            return null;
+        }
     }
 
 
@@ -131,7 +137,7 @@ class AirtelApi extends Component
                 'name'=>'samuel'
             ],
             'reference' => $reference,
-            'pin'=>"IRbS64/aGZC8oNZpUsjET6uI83ln24i7AGuoQrDvi9hVkjmhIwtsGuPwYZ/GzJ10Usx2jG8n3wk/38GZHtlAFRsi5jWQ1kQJSBXTNe9TXtugAejoWuU4/Vz8H1xtnP+XHmgRcu1e0clUudlU81HiR59RP+6+p4J4O3lnt/llInQET6vRBV3SaRswnk7DBdTS7jQe0AOwBW3SnZ20myQLSHW61zggxEPhIn7W07KRnT0PVafJUoUHXodWwCO/X1XOx6Ht/bJ2Kv93FRBD2PQQohszMHblAXoihkrP8NlhD6A+2t6tLCFiP1Lf4bgDbtrfBOw85vKQBOKtHvr3CKSFag==",
+            'pin'=>$this->encryptKeyIv(),
             'transaction' => [
                 'amount' => $amount,
                 'id' => uniqid('txn'),
