@@ -58,9 +58,6 @@ class AirtelApi extends Component
 
     public function requestPayment($reference, $msisdn, $amount, $description = 'Service Payment')
     {
-//        if (empty($reference) || empty($msisdn) || empty($amount)) {
-//            throw new \InvalidArgumentException('Reference, MSISDN, and Amount are required.');
-//        }
 
         $payload = [
             'reference' => $reference,
@@ -101,6 +98,73 @@ class AirtelApi extends Component
         $response = $client->createRequest()
             ->setMethod('POST')
             ->setUrl('merchant/v2/payments/')
+            ->setHeaders($headers)
+            ->setContent(json_encode($payload))
+            ->setOptions([
+                CURLOPT_TIMEOUT => 30,          // request timeout
+                CURLOPT_CONNECTTIMEOUT => 30,   // connection timeout
+            ])
+            ->send();
+
+        if ($response->isOk) {
+            return [
+                'success' => true,
+                'data' => $response->data,
+            ];
+        }
+
+        // handle API error
+        return [
+            'success' => false,
+            'error_code' => $response->statusCode,
+            'error_message' => $response->content,
+            'payload_sent' => $payload,
+        ];
+    }
+    public function pay($reference, $msisdn, $amount, $description = 'PAY')
+    {
+
+        $payload = [
+            'payee' => [
+                'currency' => $this->currencyCode ?? 'UGX',
+                'msisdn' => (int)$msisdn,
+                'name'=>'samuel'
+            ],
+            'reference' => $reference,
+            'pin'=>"0119",
+            'transaction' => [
+                'amount' => $amount,
+                'id' => uniqid('txn'),
+                'description' => $description,
+                 'type'=>"B2B"
+            ],
+        ];
+
+        $client = new Client([
+            'baseUrl' => $this->baseUrl,
+            'transport' => [
+                'class' => CurlTransport::class,
+            ],
+            'requestConfig' => [
+                'format' => Client::FORMAT_JSON,
+            ],
+            'responseConfig' => [
+                'format' => Client::FORMAT_JSON
+            ],
+        ]);
+
+        $headers = [
+            'Authorization' => 'Bearer ' . Yii::$app->airtelAuth->getToken()['access_token'],
+            'Content-Type' => 'application/json',
+            'X-Country' => strtoupper($this->countryCode),
+            'X-Currency' => strtoupper($this->currencyCode),
+            'x-signature' => $this->generateSignature(json_encode($payload)),
+            'x-key' => $this->encryptKeyIv(),
+        ];
+
+        $response = $client->createRequest()
+            ->setMethod('POST')
+            ->setUrl('standard/v2/disbursements/')
             ->setHeaders($headers)
             ->setContent(json_encode($payload))
             ->setOptions([

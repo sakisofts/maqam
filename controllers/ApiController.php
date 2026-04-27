@@ -11,7 +11,71 @@ use yii\rest\Controller;
 
 class ApiController extends Controller
 {
-    public function actionRequestPayment()
+    public function actionPay()
+    {
+        $request = \Yii::$app->request;
+        if (!$request->isPost) {
+            return [
+                'status' => 'error',
+                'message' => 'Method not allowed'
+            ];
+        }
+
+        $data = json_decode($request->getRawBody(), true);
+        $reference = $data['reference'] ?? null;
+        $msisdn = $data['msisdn'] ?? null;
+        $amount = $data['amount'] ?? 0;
+        $description = $data['description'] ?? null;
+
+        if (!$reference || !$msisdn || !$amount) {
+            return [
+                'status' => 'error',
+                'message' => 'Missing required parameters'
+            ];
+        }
+
+
+        try {
+            $airtelApi = \Yii::$app->airtelApi;
+            $response = $airtelApi->pay(
+                $reference,
+                $msisdn,
+                $amount,
+                $description
+            );
+
+            $bookings = $data['booking'];
+            $deposited = $data['sonda_mpola'];
+            $type = $data['type'];
+
+            if ($response['success'] && isset($response['data']['data']['transaction'])) {
+                // Log the transaction
+                $transaction = $response['data']['data']['transaction'];
+                $transactionId = $transaction['id'];
+                $transactionStatus = $transaction['status'];
+                $states = $response['data']['status'];
+                $this->logTransaction($transactionId, $reference, $msisdn, $amount, $states['message'], $description, $transactionStatus);
+                $this->updateExternalTables($type, $bookings, $amount, $transaction, $deposited);
+                return [
+                    'status' => 'success',
+                    'data' => $response['data']
+                ];
+
+            }
+            return [
+                'status' => 'error',
+                'message' => $response,
+            ];
+
+        } catch (\Exception $e) {
+            return [
+                'status' => 'error',
+                'message' => $e->getMessage()
+            ];
+        }
+    }
+
+public function actionRequestPayment()
     {
         $request = \Yii::$app->request;
         if (!$request->isPost) {
