@@ -58,8 +58,6 @@ class SiteController extends Controller
         }else{
             $payload = $request->getRawBody();
             $data = json_decode($payload, true);
-
-
             if (
                 isset($data['transaction'])
             ) {
