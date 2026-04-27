@@ -54,10 +54,7 @@ class SiteController extends Controller
 
         $request = Yii::$app->request;
         if (!$request->isPost) {
-            return [
-                'status' => 'error',
-                'message' => 'Method not allowed'
-            ];
+            return $this->asJson(['message' => 'running']);
         }else{
             $payload = $request->getRawBody();
             $data = json_decode($payload, true);
