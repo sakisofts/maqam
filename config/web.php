@@ -17,8 +17,8 @@ $config = [
             'excludeControllers' => ['api', 'landing'],
         ],
         ],
-    'name'=> 'Maqam Travels',
-    'defaultRoute' => 'landing/index',
+    'name'=> 'sakisofts',
+    'defaultRoute' => 'site/index',
     'aliases' => [
         '@bower' => '@vendor/bower-asset',
         '@npm'   => '@vendor/npm-asset',
