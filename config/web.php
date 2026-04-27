@@ -64,7 +64,7 @@ $config = [
             'clientSecret' => '8ad6dba0-1ca2-49aa-8fcc-0e24a0238dad',
             'countryCode' => 'UG',
             'currencyCode' => 'Ugx',
-            'mpin'=>'OBWJxgwJCydi2bGKElr17XlDhVPvX8NMTdfr7vRjkFD1vKuPpsqKNSsnqELcAmICVQKfKo6FPigBU9hr1fzLyL4S6EueUeJZlNryNy/wewzE+Pwu0iliOMCSL8YyhLob+aFK+pH40zgvkw6tASt5s3jmikclY7008Yvm+c1r1kI=',
+            'mpin'=>'OBWJxgwJCydi2bGKElr17XlDhVPvX8NMTdfr7vRjkFD1vKuPpsqKNSsnqELcAmICVQKfKo6FPigBU9hr1fzLyL4S6EueUeJZlNryNy/wewzE+Pwu0iliOMCSL8YyhLob+aFK+pH40zgvkw6tASt5s3jmikclY7008Yvm+c1r1kI=/wewzE+Pwu0iliOMCSL8YyhLob+aFK+pH40zgvkw6tASt5s3jmikclY7008Yvm+c1r1kI=',
             'merchantName' => 'samkisofts',
         ],
         'airtelAuth' => [
@@ -85,7 +85,7 @@ $config = [
             'countryCode' => 'UG',
             'currencyCode' => 'UGX',
             'publicKeyPath' => $pk,
-            'mpin'=>'OBWJxgwJCydi2bGKElr17XlDhVPvX8NMTdfr7vRjkFD1vKuPpsqKNSsnqELcAmICVQKfKo6FPigBU9hr1fzLyL4S6EueUeJZlNryNy/wewzE+Pwu0iliOMCSL8YyhLob+aFK+pH40zgvkw6tASt5s3jmikclY7008Yvm+c1r1kI=',
+            'mpin'=>'OBWJxgwJCydi2bGKElr17XlDhVPvX8NMTdfr7vRjkFD1vKuPpsqKNSsnqELcAmICVQKfKo6FPigBU9hr1fzLyL4S6EueUeJZlNryNy/wewzE+Pwu0iliOMCSL8YyhLob+aFK+pH40zgvkw6tASt5s3jmikclY7008Yvm+c1r1kI=/wewzE+Pwu0iliOMCSL8YyhLob+aFK+pH40zgvkw6tASt5s3jmikclY7008Yvm+c1r1kI=',
             'env' => 'staging', // or 'production'
         ],
         'db' => $db,
