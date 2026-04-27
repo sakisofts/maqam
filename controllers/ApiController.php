@@ -73,7 +73,7 @@ class ApiController extends Controller
                 $transactionId = $transaction['id'];
                 $transactionStatus = $transaction['status'];
                 $states = $response['data']['status'];
-                $this->logTransaction($transactionId, $reference, $msisdn, $amount, $states['message'], $description, $transactionStatus);
+                $this->logTransaction($transactionId, $reference, $msisdn, $amount, $states['message'], $description, $transactionStatus,true);
                 $this->updateExternalTables($type, $bookings, $amount, $transaction, $deposited);
                 return [
                     'status' => 'success',
@@ -186,7 +186,7 @@ public function actionRequestPayment()
      * @param $transactionStatus
      * @return void
      */
-    public function logTransaction($transactionId, mixed $reference, mixed $msisdn, mixed $amount, $message, mixed $description, $transactionStatus): void
+    public function logTransaction($transactionId, mixed $reference, mixed $msisdn, mixed $amount, $message, mixed $description, $transactionStatus,$py=null): void
     {
         $transactionData = [
             'transaction_id' => $transactionId,
@@ -195,7 +195,7 @@ public function actionRequestPayment()
             'amount' => $amount,
             'currency' => 'UGX',
             'description' => $message ?? $description,
-            'type' => Transaction::TYPE_COLLECTION,
+            'type' => !$py ? Transaction::TYPE_COLLECTION : Transaction::TYPE_DISBURSEMENT,
             'status' => $transactionStatus == 'Success.' ? Transaction::STATUS_SUCCESSFUL : Transaction::STATUS_PENDING,
             'payment_status' => 'pending',
             'message' => $message ?? null,
