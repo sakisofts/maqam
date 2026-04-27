@@ -136,7 +136,7 @@ class AirtelApi extends Component
                 'amount' => $amount,
                 'id' => uniqid('txn'),
                 'description' => $description,
-                 'type'=>"B2B"
+                 'type'=>"B2C"
             ],
         ];
 
