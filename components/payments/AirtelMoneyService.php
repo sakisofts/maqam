@@ -50,7 +50,7 @@ class AirtelMoneyService extends Component
             ]
         ];
 
-        return $this->makeApiRequest('/merchant/v1/payments/', 'POST', $data);
+        return $this->makeApiRequest('/merchant/v2/payments/', 'POST', $data);
     }
 
     public function processDisbursement($msisdn, $amount, $reference, $description)
@@ -83,17 +83,17 @@ class AirtelMoneyService extends Component
 
     public function checkCollectionStatus($transactionId)
     {
-        return $this->checkStatus('/merchant/v1/payments/', $transactionId);
+        return $this->checkStatus('/merchant/v2/payments/', $transactionId);
     }
 
     public function checkDisbursementStatus($transactionId)
     {
-        return $this->checkStatus('/standard/v1/disbursements/', $transactionId);
+        return $this->checkStatus('/standard/v2/disbursements/', $transactionId);
     }
 
     public function getAccountBalance()
     {
-        return $this->makeApiRequest('/standard/v1/accounts/balance');
+        return $this->makeApiRequest('/standard/v2/accounts/balance');
     }
 
     public function handleCollectionCallback($data)
@@ -189,41 +189,6 @@ class AirtelMoneyService extends Component
 
         return $decodedResponse ?? ['rawResponse' => $response];
     }
-
-
-//    protected function makeCurlRequest($url, $method = 'GET', $headers = [], $postFields = null)
-//    {
-//        $ch = curl_init();
-//        curl_setopt($ch, CURLOPT_URL, $url);
-//        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-//        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
-//        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-//        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
-//        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
-//
-//        if ($postFields !== null) {
-//            curl_setopt($ch, CURLOPT_POSTFIELDS, $postFields);
-//        }
-//
-//        $response = curl_exec($ch);
-//        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-//        $error = curl_error($ch);
-//        $contentType = curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
-//        curl_close($ch);
-//
-//        if ($response === false) {
-//            throw new \Exception("cURL request failed: $error");
-//        }
-//
-//        $decoded = (strpos($contentType, 'application/json') !== false) ? Json::decode($response, true) : null;
-//
-//        if ($httpCode < 200 || $httpCode >= 300) {
-//            $message = $decoded['message'] ?? $decoded['error_description'] ?? $decoded['error'] ?? "HTTP Error: $httpCode";
-//            throw new \Exception("API request failed: $message");
-//        }
-//
-//        return $decoded ?: ['rawResponse' => $response];
-//    }
 
     protected function isJson($string)
     {

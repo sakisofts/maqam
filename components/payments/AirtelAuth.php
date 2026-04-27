@@ -12,9 +12,8 @@ class AirtelAuth extends Component
     public $env = 'staging'; // Change to 'production' as needed staging
 
     private $baseUrls = [
-//        'staging' => 'https://openapiuat.airtel.africa/',
-        'staging' => 'https://openapi.airtel.africa/',
-        'production' => 'https://openapi.airtel.africa/',
+        'staging' => 'https://openapiuat.airtel.ug/',
+        'production' => 'https://openapi.airtel.ug/',
     ];
 
     public function getToken()
