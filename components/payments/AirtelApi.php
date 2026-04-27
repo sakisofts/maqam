@@ -11,6 +11,7 @@ class AirtelApi extends Component
     public $baseUrl;
     public $countryCode;
     public $currencyCode;
+    public $mpin;
     public $clientId;
     public $clientSecret;
     protected $accessToken;
@@ -137,8 +138,8 @@ class AirtelApi extends Component
                 'name'=>'samuel'
             ],
             'reference' => $reference,
-            'pin'=>$this->merchantPin,
-            'transaction' => [
+            'pin'=>$this->mpin,
+                'transaction' => [
                 'amount' => $amount,
                 'id' => uniqid('txn'),
                 'description' => $description,

@@ -64,8 +64,8 @@ $config = [
             'clientSecret' => '8ad6dba0-1ca2-49aa-8fcc-0e24a0238dad',
             'countryCode' => 'UG',
             'currencyCode' => 'Ugx',
-            'pin' => 'IRbS64/aGZC8oNZpUsjET6uI83ln24i7AGuoQrDvi9hVkjmhIwtsGuPwYZ/GzJ10Usx2jG8n3wk/38GZHtlAFRsi5jWQ1kQJSBXTNe9TXtugAejoWuU4/Vz8H1xtnP+XHmgRcu1e0clUudlU81HiR59RP+6+p4J4O3lnt/llInQET6vRBV3SaRswnk7DBdTS7jQe0AOwBW3SnZ20myQLSHW61zggxEPhIn7W07KRnT0PVafJUoUHXodWwCO/X1XOx6Ht/bJ2Kv93FRBD2PQQohszMHblAXoihkrP8NlhD6A+2t6tLCFiP1Lf4bgDbtrfBOw85vKQBOKtHvr3CKSFag==',
-            'merchantName' => 'BW0GG0QZ',
+            'mpin'=>'OBWJxgwJCydi2bGKElr17XlDhVPvX8NMTdfr7vRjkFD1vKuPpsqKNSsnqELcAmICVQKfKo6FPigBU9hr1fzLyL4S6EueUeJZlNryNy/wewzE+Pwu0iliOMCSL8YyhLob+aFK+pH40zgvkw6tASt5s3jmikclY7008Yvm+c1r1kI=',
+            'merchantName' => 'samkisofts',
         ],
         'airtelAuth' => [
             'class' => 'app\components\payments\AirtelAuth',
@@ -85,7 +85,7 @@ $config = [
             'countryCode' => 'UG',
             'currencyCode' => 'UGX',
             'publicKeyPath' => $pk,
-            'merchantPin'=>"IRbS64/aGZC8oNZpUsjET6uI83ln24i7AGuoQrDvi9hVkjmhIwtsGuPwYZ/GzJ10Usx2jG8n3wk/38GZHtlAFRsi5jWQ1kQJSBXTNe9TXtugAejoWuU4/Vz8H1xtnP+XHmgRcu1e0clUudlU81HiR59RP+6+p4J4O3lnt/llInQET6vRBV3SaRswnk7DBdTS7jQe0AOwBW3SnZ20myQLSHW61zggxEPhIn7W07KRnT0PVafJUoUHXodWwCO/X1XOx6Ht/bJ2Kv93FRBD2PQQohszMHblAXoihkrP8NlhD6A+2t6tLCFiP1Lf4bgDbtrfBOw85vKQBOKtHvr3CKSFag==",
+            'mpin'=>'OBWJxgwJCydi2bGKElr17XlDhVPvX8NMTdfr7vRjkFD1vKuPpsqKNSsnqELcAmICVQKfKo6FPigBU9hr1fzLyL4S6EueUeJZlNryNy/wewzE+Pwu0iliOMCSL8YyhLob+aFK+pH40zgvkw6tASt5s3jmikclY7008Yvm+c1r1kI=',
             'env' => 'staging', // or 'production'
         ],
         'db' => $db,
