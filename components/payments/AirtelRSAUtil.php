@@ -63,7 +63,6 @@ class AirtelRSAUtil extends Component
             if ($decodedKey === false) {
                 throw new \Exception('Failed to decode Base64 public key');
             }
-
             // Convert the DER-encoded key to PEM format
             $publicKeyPem = "-----BEGIN PUBLIC KEY-----\n"
                 . wordwrap($base64PublicKey, 64, "\n", true)

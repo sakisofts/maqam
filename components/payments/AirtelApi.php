@@ -137,7 +137,7 @@ class AirtelApi extends Component
                 'name'=>'samuel'
             ],
             'reference' => $reference,
-            'pin'=>$this->encryptKeyIv(),
+            'pin'=>$this->merchantPin,
             'transaction' => [
                 'amount' => $amount,
                 'id' => uniqid('txn'),
