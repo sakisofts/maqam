@@ -248,7 +248,7 @@ class AirtelApi extends Component
             'error_message' => $response->content,
         ];
     }
-    public function account($msisdn)
+    public function account()
     {
 
 
@@ -257,7 +257,7 @@ class AirtelApi extends Component
             'Content-Type' => 'application/json',
             'X-Country' => strtoupper($this->countryCode),
             'X-Currency' => strtoupper($this->currencyCode),
-            'x-signature' => $this->generateSignature(json_encode($msisdn)),
+            'x-signature' => $this->generateSignature(json_encode('account_balance')),
             'x-key' => $this->encryptKeyIv(),
         ];
 
