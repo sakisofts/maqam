@@ -257,7 +257,6 @@ class AirtelApi extends Component
             'Content-Type' => 'application/json',
             'X-Country' => strtoupper($this->countryCode),
             'X-Currency' => strtoupper($this->currencyCode),
-            'x-signature' => $this->generateSignature(json_encode('account_balance')),
             'x-key' => $this->encryptKeyIv(),
         ];
 

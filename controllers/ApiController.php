@@ -189,7 +189,6 @@ public function actionRequestPayment()
     public function actionAccount(){
         $request = Yii::$app->request;
         $airtelApi = \Yii::$app->airtelApi;
-        $data = json_decode($request->getRawBody(), true);
         if (!$request->isPost) {
             $res = $airtelApi->account("0756913885");
         }
