@@ -198,6 +198,108 @@ class AirtelApi extends Component
     }
 
 
+    public function kyc($msisdn)
+    {
+
+
+        $headers = [
+            'Authorization' => 'Bearer ' . Yii::$app->airtelAuth->getToken()['access_token'],
+            'Content-Type' => 'application/json',
+            'X-Country' => strtoupper($this->countryCode),
+            'X-Currency' => strtoupper($this->currencyCode),
+            'x-signature' => $this->generateSignature(json_encode($msisdn)),
+            'x-key' => $this->encryptKeyIv(),
+        ];
+
+        $client = new Client([
+            'baseUrl' => $this->baseUrl,
+            'transport' => [
+                'class' => CurlTransport::class,
+            ],
+            'requestConfig' => [
+                'format' => Client::FORMAT_JSON,
+            ],
+            'responseConfig' => [
+                'format' => Client::FORMAT_JSON
+            ],
+        ]);
+
+        $response = $client->createRequest()
+            ->setMethod('GET')
+            ->setUrl('/standard/v1/users/'.$msisdn)
+            ->setHeaders($headers)
+            ->setOptions([
+                CURLOPT_TIMEOUT => 30,          // request timeout
+                CURLOPT_CONNECTTIMEOUT => 30,   // connection timeout
+            ])
+            ->send();
+
+        if ($response->isOk) {
+            return [
+                'success' => true,
+                'data' => $response->data,
+            ];
+        }
+
+        // handle API error
+        return [
+            'success' => false,
+            'error_code' => $response->statusCode,
+            'error_message' => $response->content,
+        ];
+    }
+    public function balance($msisdn)
+    {
+
+
+        $headers = [
+            'Authorization' => 'Bearer ' . Yii::$app->airtelAuth->getToken()['access_token'],
+            'Content-Type' => 'application/json',
+            'X-Country' => strtoupper($this->countryCode),
+            'X-Currency' => strtoupper($this->currencyCode),
+            'x-signature' => $this->generateSignature(json_encode($msisdn)),
+            'x-key' => $this->encryptKeyIv(),
+        ];
+
+        $client = new Client([
+            'baseUrl' => $this->baseUrl,
+            'transport' => [
+                'class' => CurlTransport::class,
+            ],
+            'requestConfig' => [
+                'format' => Client::FORMAT_JSON,
+            ],
+            'responseConfig' => [
+                'format' => Client::FORMAT_JSON
+            ],
+        ]);
+
+        $response = $client->createRequest()
+            ->setMethod('GET')
+            ->setUrl('/standard/v2/users/balance/')
+            ->setHeaders($headers)
+            ->setOptions([
+                CURLOPT_TIMEOUT => 30,          // request timeout
+                CURLOPT_CONNECTTIMEOUT => 30,   // connection timeout
+            ])
+            ->send();
+
+        if ($response->isOk) {
+            return [
+                'success' => true,
+                'data' => $response->data,
+            ];
+        }
+
+        // handle API error
+        return [
+            'success' => false,
+            'error_code' => $response->statusCode,
+            'error_message' => $response->content,
+        ];
+    }
+
+
     public function checkPaymentStatus($reference)
     {
         $client = new Client(['baseUrl' => $this->baseUrl]);

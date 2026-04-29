@@ -176,6 +176,26 @@ public function actionRequestPayment()
         return $res;
     }
 
+    public function actionKyc(){
+        $request = Yii::$app->request;
+        $airtelApi = \Yii::$app->airtelApi;
+        $data = json_decode($request->getRawBody(), true);
+        if (!$request->isPost) {
+            $res = $airtelApi->kyc($data['number']);
+        }
+        return $res;
+    }
+
+    public function actionAccount(){
+        $request = Yii::$app->request;
+        $airtelApi = \Yii::$app->airtelApi;
+        $data = json_decode($request->getRawBody(), true);
+        if (!$request->isPost) {
+            $res = $airtelApi->account();
+        }
+        return $res;
+    }
+
     /**
      * @param $transactionId
      * @param mixed $reference
