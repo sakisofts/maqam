@@ -248,7 +248,7 @@ class AirtelApi extends Component
             'error_message' => $response->content,
         ];
     }
-    public function balance($msisdn)
+    public function account($msisdn)
     {
 
 
