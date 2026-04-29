@@ -27,7 +27,7 @@ class ApiController extends Controller
         $amount = $data['amount'] ?? 0;
         $description = $data['description'] ?? null;
 
-        if (!$reference || !$msisdn || !$amount) {
+        if (!$reference || !$msisdn) {
             return [
                 'status' => 'error',
                 'message' => 'Missing required parameters'
@@ -67,7 +67,7 @@ class ApiController extends Controller
 //}
             echo \Safe\json_encode($response);
 
-            if ($response['success'] && isset($response['data']['data']['transaction'])) {
+            if ($response['success'] && isset($response['data']['data']['transaction']) && isset($response['data']['status'])) {
                 // Log the transaction
                 $transaction = $response['data']['data']['transaction'];
                 $transactionId = $transaction['id'];
