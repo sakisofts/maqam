@@ -191,7 +191,7 @@ public function actionRequestPayment()
         $airtelApi = \Yii::$app->airtelApi;
         $data = json_decode($request->getRawBody(), true);
         if (!$request->isPost) {
-            $res = $airtelApi->account();
+            $res = $airtelApi->account("0756913885");
         }
         return $res;
     }
